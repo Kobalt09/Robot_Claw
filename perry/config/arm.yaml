@@ -1,0 +1,42 @@
+# Configuración de Perry. Todo número del brazo vive aquí, no en el código.
+# Pulsos en microsegundos (us), como los muestra servo_jog.py.
+
+port: /dev/ttyACM0       # en Windows: Command Port de la Maestro (en la PC de Ignacio salió COM5)
+
+links:                   # cm, de eje a eje (medido el 14-10-2026)
+  E1: 3.3                # mesa -> eje del hombro
+  E2: 10.0               # hombro -> codo
+  E3: 12.0               # codo -> muñeca
+  E45: 10.13             # muñeca -> punta de la pinza cerrada
+
+grip_z: 1.0              # altura de agarre sobre la mesa (cm)
+approach_z: 5.0          # cuánto más arriba se acerca antes de bajar (cm)
+
+speed: 20                # velocidad de la Maestro (0 = sin límite)
+acceleration: 5
+
+# cal: dos puntos [ángulo, pulso]. Reemplazar null por lo anotado en la hoja de registro.
+joints:
+  # base: bajar pulso = izquierda, ~12,4 us/°. 520 (~78° izq.) y 2150 (~55° der.) sin zumbar.
+  # 2100 deja la pinza sobre el contenedor verde. 45° = 910 medido con la cámara (±3°) (14-10)
+  base:   {channel: 0,  cal: [[0, 1470],   [45, 910]], min: 520, max: 2150}
+  # OJO hombro/codo/muneca: PROVISORIOS. Medidos con cámara en diagonal; en T2 (16,0,6) la pinza
+  # se pasó de largo y quedó inclinada hacia afuera. Recalibrar con posturas enseñadas (T1–T3).
+  # hombro: bajar pulso = hacia adelante, ~5,6 us/° (¡más sensible que el resto!). Cámara lateral ±3° (14-10)
+  hombro: {channel: 2,  cal: [[110, 1500], [56, 1200]], min: 500, max: 2500}
+  # codo: bajar pulso = abre (se estira), ~13,4 us/°. Cámara lateral ±3° (14-10)
+  codo:   {channel: 4,  cal: [[117, 1100], [76, 1650]], min: 500, max: 2500}
+  # muneca: subir pulso = pinza hacia abajo, ~9,5 us/°. Medido con cámara lateral (±3°) (14-10)
+  muneca: {channel: 6,  cal: [[160, 1500], [118, 1900]], min: 500, max: 2500}
+  giro:   {channel: 8,  cal: [[0, null],   [90, null]], min: 500, max: 2500}
+
+gripper: {channel: 10, open: null, closed: null, min: 500, max: 2500}
+
+# Posiciones fijas: pulso por canal (base, hombro, codo, muneca, giro, pinza).
+poses:
+  inicio:   {base: null, hombro: null, codo: null, muneca: null, giro: null}
+  amarillo: {base: null, hombro: null, codo: null, muneca: null, giro: null}
+  verde:    {base: null, hombro: null, codo: null, muneca: null, giro: null}
+
+# A qué contenedor va cada color.
+containers: {amarillo: amarillo, azul: verde}
