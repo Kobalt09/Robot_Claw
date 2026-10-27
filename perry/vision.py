@@ -30,6 +30,17 @@ def save_image(path, img):
     return ok
 
 
+def parallax_correct(x, y, nadir, cam_height, obj_height):
+    """Corrige la paralaje de un objeto de altura obj_height visto desde arriba.
+
+    La homografía es para el plano de la mesa, pero la cámara ve la cara de arriba del cubo:
+    por perspectiva, aparece corrido hacia afuera del punto de la mesa que está justo debajo
+    de la cámara (nadir), en la proporción obj_height / cam_height. Se lo trae de vuelta.
+    """
+    k = 1.0 - obj_height / cam_height
+    return nadir[0] + (x - nadir[0]) * k, nadir[1] + (y - nadir[1]) * k
+
+
 def _square_angle(pts):
     """Ángulo (en [-45, 45)) de un cubo a partir de sus puntos, con el rectángulo mínimo."""
     box = cv2.boxPoints(cv2.minAreaRect(np.float32(pts)))
@@ -80,6 +91,12 @@ class TopCamera:
             self.det.configurar_color(name, [(np.array(lo, np.uint8), np.array(hi, np.uint8)) for lo, hi in ranges])
         self.cam = CapturaCamara(indice_camara=c["index"])
         time.sleep(c["warmup_s"])
+        # punto de la mesa justo debajo de la cámara: el de arm.yaml, o el centro de la imagen
+        if c.get("nadir_cm"):
+            self.nadir = tuple(c["nadir_cm"])
+        else:
+            h, w = self.frame().shape[:2]
+            self.nadir = self.px_to_cm(w / 2, h / 2)
 
     def __enter__(self):
         return self
@@ -116,6 +133,7 @@ class TopCamera:
             border = cv2.perspectiveTransform(np.float32(d.contorno).reshape(-1, 1, 2), self.H)
             parts = split_region(pts, cv2.contourArea(border), self.cube_cm)
             for px, py, angle in parts:
+                px, py = parallax_correct(px, py, self.nadir, self.cfg["height_cm"], self.cube_cm)
                 cubes.append(Cube(d.color, px, py, angle, d.area / len(parts)))
         cubes.sort(key=lambda c: -c.area)
         img = self.det.dibujar_detecciones(f, detections)

@@ -47,6 +47,9 @@ camera:
   corners_px: [[247.0, 146.3], [409.3, 135.0], [414.5, 220.0], [253.3, 231.3]]
   corners_cm: [[19.6, 8.25], [19.6, -8.25], [11.1, -8.25], [11.1, 8.25]]
   zone: {x_min: 10.0, x_max: 21.0, y_abs: 9.5}   # solo se buscan cubos aquí (+1 cm de margen)
+  height_cm: 70.0          # altura del lente sobre la mesa: corrige la paralaje (la cámara ve la cara
+                           # de arriba del cubo y lo ve corrido hacia afuera; fuera del centro, 0,5–1 cm)
+  nadir_cm: null           # punto de la mesa bajo la cámara (plomada). null = centro de la imagen
   min_area_px: 150
   colors:                  # rangos HSV de OpenCV (H 0–179)
     azul:     [[[95, 100, 50], [130, 255, 255]]]
