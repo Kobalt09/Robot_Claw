@@ -89,7 +89,16 @@ Hecho: medidas reales; `perry/` escrito; **primera sesión con el brazo real (14
 - Cámaras en la PC (OpenCV, `CAP_DSHOW`): índice 0 = webcam externa sobre la mesa (se mueve), índice 1 = cámara de la notebook.
 - Al energizar un canal que está en 0 µs, salta de golpe: energizar de a uno, con el brazo sostenido.
 
-Siguiente, en este orden:
+**Sesiones del 20 y 27-10-2026: Perry clasifica solo** (`perry/sort_cubes.py --run`; ver `perry/README.md`).
+
+- Hombro, codo y muñeca ya no usan la cinemática: **tabla enseñada** `reach.rows` (r → pulsos), probada con cubos reales a 16 y 18 cm.
+- Base calibrada por tramos con puntos tocados (0° = 1504), con **~7° de juego**: se llega siempre desde abajo.
+- El giro de la pinza tenía el **signo invertido** (corregido). El resorte nuevo del hombro sube el brazo: `grip_shoulder_offset_us: -30`.
+- Visión: cámara cenital + homografía con las 4 esquinas del rectángulo (16,5 × 8,5 cm, X de 11,1 a 19,6 cm); usa el detector de Stalin (`codigo_python/`). Si mueven la cámara: `calibrate_camera.py`.
+- Probado: cubos girados, cubo fuera de alcance (lo ignora), agarre fallido (lo detecta y reintenta).
+- Pendiente: enseñar con cubo real las filas de ~13,8 y ~20 cm (a 14 cm del lado izquierdo el primer agarre a veces falla); contenedor verde y qué hacer con el cubo rojo; precisión del giro en cubos muy girados; probar en la Raspberry.
+
+Siguiente (plan original, ya superado en parte):
 
 1. **Recalibrar hombro, codo y muñeca con posturas enseñadas**: llevar la pinza con comandos a T1, T2 y T3 (vertical, a 1 cm, sobre la marca). La cinemática da el ángulo exacto de cada articulación en esa postura, y así cada postura aporta un par [ángulo, pulso]. Ajustar la recta con los tres puntos. Para ver bien conviene una cámara realmente de perfil (por ejemplo, el teléfono como webcam) y un fondo cuadriculado detrás del brazo. Faltan también el giro (0°/90°) y la pinza (abierta/cerrada).
 2. **Puntos de prueba** T1 (12, 0), T2 (16, 0), T3 (19,5, 0), T4 (16, 6), T5 (16, −6): llevar la pinza vertical a 1 cm de la mesa y anotar pulsos. Compararlos con lo que da `pick_test.py` para validar la calibración. Confirmar si el hombro pasa de 90° sin forzarse.
