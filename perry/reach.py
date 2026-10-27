@@ -98,11 +98,17 @@ def push(m, cfg, start, end, direction):
     lower_shoulder(m, cfg, low["hombro"] + lift)
     dist = hypot(end[0] - start[0], end[1] - start[1])
     steps = max(1, int(dist / cfg["push_step_cm"]))
+    # Juego de la base (~7°): se llegó al inicio subiendo el pulso. Si el empuje necesita BAJAR el
+    # pulso, los primeros backlash_us solo recorren la holgura y el cubo no se mueve: se compensa.
+    b0 = low["base"]
+    b_end = pulses_at(cfg, *end, level="grip", grasp_dir=direction)["base"]
+    slack = -cfg["joints"]["base"]["backlash_us"] if b_end < b0 else 0.0
     for i in range(1, steps + 1):
         t = i / steps
         x, y = start[0] + t * (end[0] - start[0]), start[1] + t * (end[1] - start[1])
         p = pulses_at(cfg, x, y, level="grip", grasp_dir=direction)
         p["hombro"] += lift
+        p["base"] += slack
         for j in ("base", "giro", "codo", "muneca", "hombro"):
             m.set_us(ch[j], p[j])
         m.wait()

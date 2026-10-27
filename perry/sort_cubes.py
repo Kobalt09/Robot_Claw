@@ -123,7 +123,9 @@ def main():
                 break
             choice = choose_grasp(cubes, gcfg, can_try)
             if choice is None:
-                plan = plan_push(cubes, gcfg, can_try, point_ok=lambda p: reachable(cfg, p))
+                z = cfg["camera"]["zone"]
+                in_zone = lambda p: z["x_min"] <= p.x <= z["x_max"] and abs(p.y) <= z["y_abs"]  # noqa: E731
+                plan = plan_push(cubes, gcfg, can_try, point_ok=lambda p: reachable(cfg, p) and in_zone(p))
                 if plan is None or pushes >= s["max_pushes"]:
                     log("Hay cubos pero ninguno se puede agarrar ni separar empujando. Me detengo.")
                     break

@@ -60,7 +60,8 @@ grasp:
   opening: 4.1         # apertura con gripper.open. Pre-cerrar (~2,9 cm) libera más cubos: falta
                        # medir qué pulso da 2,9 cm y poner aquí 2.9 y ese pulso en gripper.open
   error: 0.5           # error de posición esperado de la punta
-  push: 3.0            # cuánto se desliza una fila al empujarla (2x2 -> filas corridas)
+  push: 3.8            # cuánto se desliza una fila al empujarla: 2 cubos, para sacarla del bloque
+                       # entera (con 3,0 los cubos se arrastraban entre sí y el 2x2 quedaba escalonado)
   w_giro: 0.3
   w_r: 0.02
 push_lift_us: 20       # al empujar, la pinza va este tanto (hombro) más alta que al agarrar

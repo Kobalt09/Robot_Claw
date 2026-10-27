@@ -30,27 +30,31 @@ def save_image(path, img):
     return ok
 
 
-def split_blob(points_cm, cube):
+def _square_angle(pts):
+    """Ángulo (en [-45, 45)) de un cubo a partir de sus puntos, con el rectángulo mínimo."""
+    box = cv2.boxPoints(cv2.minAreaRect(np.float32(pts)))
+    e = box[1] - box[0]
+    return (degrees(atan2(float(e[1]), float(e[0]))) + 45) % 90 - 45
+
+
+def split_region(points_cm, area_cm2, cube):
     """Separa una mancha de cubos del mismo color pegados en cubos individuales.
 
-    points_cm: contorno de la mancha ya pasado a cm (N x 2). Los rastrillos dejan los cubos de
-    una pasada con la misma orientación, así que la mancha es un rectángulo de n x m cubos:
-    se cuenta cuántos caben en cada arista del rectángulo mínimo y se reparte.
-    Devuelve [(x, y, ángulo)] con el ángulo en [-45, 45).
+    points_cm: puntos del INTERIOR de la mancha, ya en cm (N x 2); area_cm2: su área.
+    Cuántos cubos hay sale del área (no de la forma), así funciona con filas prolijas, pares
+    escalonados, formas de L o cubos girados distinto. Los puntos se reparten con k-means y
+    cada grupo da el centro y el ángulo de un cubo. Devuelve [(x, y, ángulo en [-45, 45))].
     """
-    box = cv2.boxPoints(cv2.minAreaRect(np.float32(points_cm)))
-    e0, e1 = box[1] - box[0], box[2] - box[1]
-    l0, l1 = float(np.hypot(*e0)), float(np.hypot(*e1))
-    u0, u1 = e0 / l0, e1 / l1
-    n0, n1 = max(1, round(l0 / cube)), max(1, round(l1 / cube))
-    c = box.mean(axis=0)
-    angle = (degrees(atan2(u0[1], u0[0])) + 45) % 90 - 45
-    out = []
-    for i in range(n0):
-        for j in range(n1):
-            p = c + (i - (n0 - 1) / 2) * (l0 / n0) * u0 + (j - (n1 - 1) / 2) * (l1 / n1) * u1
-            out.append((float(p[0]), float(p[1]), angle))
-    return out
+    pts = np.float32(points_cm)
+    n = max(1, int(area_cm2 / (cube * cube) + 0.45))   # tolera que la segmentación coma borde
+    if n == 1 or len(pts) < n:
+        c = pts.mean(axis=0)
+        return [(float(c[0]), float(c[1]), _square_angle(pts))]
+    cv2.setRNGSeed(0)
+    crit = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 50, 1e-3)
+    _, labels, centers = cv2.kmeans(pts, n, None, crit, 10, cv2.KMEANS_PP_CENTERS)
+    labels = labels.ravel()
+    return [(float(c[0]), float(c[1]), _square_angle(pts[labels == k])) for k, c in enumerate(centers)]
 
 
 @dataclass
@@ -103,13 +107,26 @@ class TopCamera:
             x, y = self.px_to_cm(*d.centroide)
             if not (z["x_min"] <= x <= z["x_max"] and abs(y) <= z["y_abs"]):
                 continue
-            # contorno a cm (sin perspectiva) y separar cubos pegados del mismo color
-            pts = cv2.perspectiveTransform(np.float32(d.contorno).reshape(-1, 1, 2), self.H).reshape(-1, 2)
-            parts = split_blob(pts, self.cube_cm)
+            # interior de la mancha a cm (sin perspectiva) y separar cubos pegados del mismo color
+            mask = np.zeros(f.shape[:2], np.uint8)
+            cv2.drawContours(mask, [d.contorno], -1, 255, -1)
+            vs, us = np.nonzero(mask)
+            pix = np.float32(np.column_stack([us, vs])).reshape(-1, 1, 2)
+            pts = cv2.perspectiveTransform(pix, self.H).reshape(-1, 2)
+            border = cv2.perspectiveTransform(np.float32(d.contorno).reshape(-1, 1, 2), self.H)
+            parts = split_region(pts, cv2.contourArea(border), self.cube_cm)
             for px, py, angle in parts:
                 cubes.append(Cube(d.color, px, py, angle, d.area / len(parts)))
         cubes.sort(key=lambda c: -c.area)
-        return cubes, self.det.dibujar_detecciones(f, detections)
+        img = self.det.dibujar_detecciones(f, detections)
+        Hinv = np.linalg.inv(self.H)
+        for c in cubes:   # centro y una arista de cada cubo separado, para revisar a ojo
+            a = np.radians(c.angle)
+            ends = np.float32([[c.x, c.y], [c.x + np.cos(a) * self.cube_cm / 2, c.y + np.sin(a) * self.cube_cm / 2]])
+            (p0, p1) = cv2.perspectiveTransform(ends.reshape(-1, 1, 2), Hinv).reshape(-1, 2)
+            cv2.drawMarker(img, (int(p0[0]), int(p0[1])), (0, 255, 0), cv2.MARKER_TILTED_CROSS, 8, 2)
+            cv2.line(img, (int(p0[0]), int(p0[1])), (int(p1[0]), int(p1[1])), (0, 255, 0), 1)
+        return cubes, img
 
 
 if __name__ == "__main__":

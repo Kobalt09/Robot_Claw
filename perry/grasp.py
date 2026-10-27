@@ -160,14 +160,23 @@ def plan_push(cubes, g, reachable, point_ok=None):
             pusher = _rect(start[0], start[1], a, half + g.error, g.finger_width / 2 + g.error)
             if any(_overlap(pusher, _square(o, g), g.eps) for o in cubes):
                 continue                    # no hay lugar para bajar la pinza de ese lado
-            end = (start[0] + n[0] * g.push, start[1] + n[1] * g.push)
+            travel = g.push + g.error       # primero cierra la luz, después mueve el cubo g.push
+            end = (start[0] + n[0] * travel, start[1] + n[1] * travel)
             predicted, n_moved = _slide(cubes, c, n, g)
             moved_ok = all(point_ok(p) for p, o in zip(predicted, cubes) if p is not o)
             if not moved_ok or not point_ok(Cube("", *start, a)) or not point_ok(Cube("", *end, a)):
                 continue
-            if choose_grasp(predicted, g, reachable) is None:
-                continue
-            key = (n_moved, hypot(*start))
+            if choose_grasp(predicted, g, reachable) is not None:
+                key = (0, n_moved, hypot(*start))                    # ideal: deja algo agarrable
+            else:
+                key = (1, -_freedom(predicted, g, reachable), hypot(*start))   # mejor esfuerzo
             if best_key is None or key < best_key:
                 best, best_key = PushPlan(c, n, start, end, predicted), key
     return best
+
+
+def _freedom(cubes, g, reachable):
+    """Qué tan 'suelto' está el grupo: suma de la mejor holgura de cada cubo (bloqueado = -1).
+    Sirve para elegir un empuje cuando ninguno deja algo agarrable en la simulación: el empuje
+    real no es una simulación perfecta, así que se empuja, se vuelve a mirar y se itera."""
+    return sum(max(axis_clearance(c, cubes, d, g) for d in closing_dirs(c)) for c in cubes if reachable(c))

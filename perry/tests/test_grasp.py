@@ -80,8 +80,40 @@ def test_push_on_2x2_pushes_along_a_face_normal_from_a_free_side():
     assert abs(dx) < 1e-9 or abs(dy) < 1e-9                 # a lo largo de una normal de cara
     # el empujador arranca afuera del bloque: no pisa ningún cubo
     assert not any(abs(plan.start[0] - c.x) < 1.9 and abs(plan.start[1] - c.y) < 1.9 for c in cubes)
-    # recorre la distancia de empuje
-    assert ((plan.end[0] - plan.start[0]) ** 2 + (plan.end[1] - plan.start[1]) ** 2) ** 0.5 == pytest.approx(G.push)
+    # recorre la luz inicial (error) + el empuje: así el cubo se mueve exactamente G.push
+    assert ((plan.end[0] - plan.start[0]) ** 2 + (plan.end[1] - plan.start[1]) ** 2) ** 0.5 == pytest.approx(G.push + G.error)
+
+
+def test_push_never_moves_cubes_out_of_the_zone():
+    # bloque pegado al borde izquierdo de la zona (|y| <= 9.5): no puede empujar hacia +y
+    cubes = block_2x2(x0=14.0, y0=6.5)
+    inside = lambda c: abs(c.y) <= 9.5 and 10 <= c.x <= 21  # noqa: E731
+    plan = plan_push(cubes, G, ALWAYS, point_ok=inside)
+    assert plan is not None
+    assert all(inside(c) for c in plan.predicted)
+
+
+def brick(x0=13.0, y0=0.0):
+    """Pizarrón: 3 arriba y 2 abajo, corridos medio cubo (aparejo de ladrillos)."""
+    s = 1.9
+    top = [Cube("azul", x0 + s, y0 + (i - 1) * s, 0) for i in range(3)]
+    bottom = [Cube("azul", x0, y0 + (i - 0.5) * s, 0) for i in range(2)]
+    return top + bottom
+
+
+def test_messy_cluster_still_gets_a_best_effort_push():
+    # como en la foto tras un empuje real: bloque escalonado y girado, sin eje libre
+    s = 1.9
+    cubes = [Cube("azul", 14.0, 0.2, 5), Cube("azul", 14.0 + s, -0.4, -3), Cube("azul", 14.3, 0.2 + s, 8),
+             Cube("azul", 14.0 + s, s - 0.6, 2), Cube("azul", 15.1, 2 * s + 0.1, 4)]
+    if choose_grasp(cubes, G, ALWAYS) is None:
+        plan = plan_push(cubes, G, ALWAYS)
+        assert plan is not None
+
+
+def test_brick_pattern_is_solvable():
+    cubes = brick()
+    assert choose_grasp(cubes, G, ALWAYS) is not None or plan_push(cubes, G, ALWAYS) is not None
 
 
 def test_after_push_some_cube_is_graspable():
