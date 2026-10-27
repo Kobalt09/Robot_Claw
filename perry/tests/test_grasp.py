@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from grasp import Cube, GraspCfg, axis_is_free, choose_grasp, plan_push, closing_dirs  # noqa: E402
+from grasp import Cube, GraspCfg, axis_is_free, choose_grasp, plan_push, closing_dirs, grab_succeeded  # noqa: E402
 
 G = GraspCfg(cube=1.9, finger_thick=0.5, finger_width=1.9, opening=2.9, error=0.5, push=3.0)
 ALWAYS = lambda c: True  # todo alcanzable  # noqa: E731
@@ -109,6 +109,24 @@ def test_messy_cluster_still_gets_a_best_effort_push():
     if choose_grasp(cubes, G, ALWAYS) is None:
         plan = plan_push(cubes, G, ALWAYS)
         assert plan is not None
+
+
+def test_grab_succeeded_when_one_cube_less():
+    before = [Cube("azul", 15, 0, 0), Cube("azul", 17, 2, 0)]
+    after = [Cube("azul", 17, 2, 0)]
+    assert grab_succeeded(before, after, before[0])
+
+
+def test_pushed_cube_is_not_a_success():
+    # caso real del 27-10: la pinza empujó el cubo 2 cm en vez de levantarlo
+    before = [Cube("azul", 18.8, 4.9, 0)]
+    after = [Cube("azul", 17.4, 3.5, 0)]
+    assert not grab_succeeded(before, after, before[0])
+
+
+def test_cube_still_in_place_is_not_a_success():
+    before = [Cube("azul", 15, 0, 0)]
+    assert not grab_succeeded(before, list(before), before[0])
 
 
 def test_brick_pattern_is_solvable():

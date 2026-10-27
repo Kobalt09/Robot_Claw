@@ -73,6 +73,7 @@ sort:
   retries: 1               # reintentos por cubo antes de darlo por perdido
   max_cycles: 12           # tope de vueltas del ciclo (seguridad)
   max_pushes: 3            # tope de empujes por ronda
+  push_margin_r: 1.0       # un cubo empujado debe quedar a <= max_r - esto (en el borde la punta es imprecisa)
   log_dir: logs            # fotos y registro de cada corrida (dentro de perry/)
 
 # Posturas enseñadas: la punta toca el papel. r = distancia al eje de la base (cm).

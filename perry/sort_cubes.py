@@ -23,7 +23,7 @@ from pathlib import Path
 import cv2
 import yaml
 
-from grasp import GraspCfg, choose_grasp, plan_push
+from grasp import GraspCfg, choose_grasp, plan_push, grab_succeeded
 from maestro import Maestro
 from reach import pulses_at, move_via_top, lower_shoulder, push, OutOfTable
 from vision import TopCamera, save_image
@@ -125,7 +125,9 @@ def main():
             if choice is None:
                 z = cfg["camera"]["zone"]
                 in_zone = lambda p: z["x_min"] <= p.x <= z["x_max"] and abs(p.y) <= z["y_abs"]  # noqa: E731
-                plan = plan_push(cubes, gcfg, can_try, point_ok=lambda p: reachable(cfg, p) and in_zone(p))
+                margin = cfg["reach"]["max_r"] - s["push_margin_r"]   # no dejar cubos en el borde del alcance
+                ok = lambda p: reachable(cfg, p) and in_zone(p) and hypot(p.x, p.y) <= margin  # noqa: E731
+                plan = plan_push(cubes, gcfg, can_try, point_ok=ok)
                 if plan is None or pushes >= s["max_pushes"]:
                     log("Hay cubos pero ninguno se puede agarrar ni separar empujando. Me detengo.")
                     break
@@ -147,13 +149,15 @@ def main():
                 pick(cfg, m, c, grasp_dir)
             except OutOfTable as e:
                 log(f"No se puede llegar: {e}. Lo ignoro."); ignored.append((c.x, c.y)); continue
-            # verificar: si sigue un cubo ahí, el agarre falló
+            # verificar CONTANDO: el agarre salió solo si hay un cubo menos de ese color
             after = look(cfg, m, cam, log, f"verificacion{cycle}")
-            still = [d for d in after if hypot(d.x - c.x, d.y - c.y) < s["same_cube_cm"]]
-            if still:
+            if not grab_succeeded(cubes, after, c):
                 key = (round(c.x), round(c.y))
                 tries[key] = tries.get(key, 0) + 1
-                log(f"El agarre falló (intento {tries[key]}): el cubo sigue en ({still[0].x:.1f}, {still[0].y:.1f}).")
+                near = min(after, key=lambda d: hypot(d.x - c.x, d.y - c.y), default=None)
+                where = f" (el más cercano quedó en ({near.x:.1f}, {near.y:.1f}))" if near else ""
+                log(f"El agarre falló (intento {tries[key]}): sigue habiendo {sum(d.color == c.color for d in after)} "
+                    f"cubo(s) {c.color}{where}.")
                 if tries[key] > s["retries"]:
                     log("Lo doy por perdido."); ignored.append((c.x, c.y))
                 g_ = cfg["gripper"]; m.set_us(g_["channel"], g_["open"]); m.wait()

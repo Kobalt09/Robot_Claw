@@ -175,6 +175,16 @@ def plan_push(cubes, g, reachable, point_ok=None):
     return best
 
 
+def grab_succeeded(before, after, target):
+    """¿Se levantó el cubo? Solo si ahora hay UNO MENOS de su color en la zona.
+
+    No alcanza con "ya no está en el mismo lugar": un agarre fallido puede empujar el cubo
+    más allá de cualquier radio y parecer un éxito (pasó el 27-10 a 19,4 cm del eje).
+    """
+    count = lambda cubes: sum(1 for c in cubes if c.color == target.color)  # noqa: E731
+    return count(after) < count(before)
+
+
 def _freedom(cubes, g, reachable):
     """Qué tan 'suelto' está el grupo: suma de la mejor holgura de cada cubo (bloqueado = -1).
     Sirve para elegir un empuje cuando ninguno deja algo agarrable en la simulación: el empuje
