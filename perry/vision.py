@@ -75,6 +75,8 @@ class Cube:
     y: float          # cm, a la izquierda
     angle: float      # grados en [-45, 45): giro del cubo visto desde arriba
     area: float       # píxeles
+    raw_x: float = 0.0  # posición antes de corregir la paralaje (para auditar)
+    raw_y: float = 0.0
 
 
 class TopCamera:
@@ -132,9 +134,9 @@ class TopCamera:
             pts = cv2.perspectiveTransform(pix, self.H).reshape(-1, 2)
             border = cv2.perspectiveTransform(np.float32(d.contorno).reshape(-1, 1, 2), self.H)
             parts = split_region(pts, cv2.contourArea(border), self.cube_cm)
-            for px, py, angle in parts:
-                px, py = parallax_correct(px, py, self.nadir, self.cfg["height_cm"], self.cube_cm)
-                cubes.append(Cube(d.color, px, py, angle, d.area / len(parts)))
+            for rx, ry, angle in parts:
+                px, py = parallax_correct(rx, ry, self.nadir, self.cfg["height_cm"], self.cube_cm)
+                cubes.append(Cube(d.color, px, py, angle, d.area / len(parts), rx, ry))
         cubes.sort(key=lambda c: -c.area)
         img = self.det.dibujar_detecciones(f, detections)
         Hinv = np.linalg.inv(self.H)

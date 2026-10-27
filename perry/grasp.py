@@ -86,6 +86,11 @@ def _fingers(c, direction, g, extra=0.0):
     return [_rect(c.x + s * mid * u[0], c.y + s * mid * u[1], direction, half_u, half_v) for s in (1, -1)]
 
 
+def finger_boxes(c, direction, g):
+    """Las 2 huellas de los dedos (rectángulos en cm, con el margen de error) para auditar."""
+    return _fingers(c, direction, g)
+
+
 def axis_is_free(c, others, direction, g, extra=0.0):
     fingers = _fingers(c, direction, g, extra)
     return not any(_overlap(f, _square(o, g), g.eps) for f in fingers for o in others if o is not c)
