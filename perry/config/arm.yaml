@@ -33,8 +33,29 @@ joints:
   # el 20-10: con el signo al revés fallaban los cubos girados del lado izquierdo).
   giro:   {channel: 8,  cal: [[0, 1447],   [45, 1896]], min: 500, max: 2500}
 
-# pinza: 750 abierta; 1500 aprieta un cubo de ~2 cm (probado: lo levanta); ~1700 cerrada del todo
-gripper: {channel: 10, open: 750, closed: 1500, min: 500, max: 2500}
+# pinza: 750 abierta; 1600 aprieta un cubo de ~2 cm sin soltarlo en el giro; ~1700 cerrada del todo
+gripper: {channel: 10, open: 750, closed: 1600, min: 500, max: 2500}
+
+# Cámara cenital. Si la mueven: py calibrate_camera.py (vuelve a marcar las 4 esquinas).
+camera:
+  index: 0                 # en la PC de Ignacio cambia entre 0 y 1 según qué se conecte primero
+  warmup_s: 2.0            # espera para que ajuste la exposición
+  # Homografía: 4 esquinas del rectángulo de la hoja milimetrada (en este orden: lejana izq.,
+  # lejana der., cercana der., cercana izq.) en píxeles y en cm (X hacia la zona, Y a la izquierda).
+  corners_px: [[247.0, 146.3], [409.3, 135.0], [414.5, 220.0], [253.3, 231.3]]
+  corners_cm: [[19.6, 8.25], [19.6, -8.25], [11.1, -8.25], [11.1, 8.25]]
+  zone: {x_min: 10.0, x_max: 21.0, y_abs: 9.5}   # solo se buscan cubos aquí (+1 cm de margen)
+  min_area_px: 150
+  colors:                  # rangos HSV de OpenCV (H 0–179)
+    azul:     [[[95, 100, 50], [130, 255, 255]]]
+    amarillo: [[[18, 90, 90],  [35, 255, 255]]]
+
+# Ciclo automático (sort_cubes.py)
+sort:
+  same_cube_cm: 1.5        # si tras agarrar hay un cubo a menos de esto del objetivo, el agarre falló
+  retries: 1               # reintentos por cubo antes de darlo por perdido
+  max_cycles: 12           # tope de vueltas del ciclo (seguridad)
+  log_dir: logs            # fotos y registro de cada corrida (dentro de perry/)
 
 # Posturas enseñadas: la punta toca el papel. r = distancia al eje de la base (cm).
 # Origen: poses del Maestro Control Center (20-10) sobre el rectángulo de 16,5 × 8,5 cm

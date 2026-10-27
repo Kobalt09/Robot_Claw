@@ -49,17 +49,22 @@ def pulses_at(cfg, x, y, cube_angle=0.0, level="grip"):
     return us
 
 
-def move_via_top(m, cfg, target):
+def move_via_top(m, cfg, target, precise_base=True):
     """Va a `target` ({articulación: pulso}) pasando por arriba, de a una articulación.
 
     1) sube a la pose de traslado (hombro, codo, muñeca), 2) gira base y giro allá arriba,
     3) baja: primero codo y muñeca, el hombro al final. Así nunca barre contenedores ni cubos.
+    precise_base=False gira la base directo (sin compensar el juego): sirve para contenedores
+    y poses fijas, donde un ida y vuelta solo sacude el cubo.
     """
     ch = {j: cfg["joints"][j]["channel"] for j in cfg["joints"]}
     for j in ARM:
         m.set_us(ch[j], cfg["travel"][j]); m.wait()
     if "base" in target:
-        set_base(m, cfg, target["base"])
+        if precise_base:
+            set_base(m, cfg, target["base"])
+        else:
+            m.set_us(ch["base"], target["base"]); m.wait()
     for j in ("giro", "codo", "muneca"):
         if j in target:
             m.set_us(ch[j], target[j]); m.wait()

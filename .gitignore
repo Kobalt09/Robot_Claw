@@ -1,2 +1,4 @@
 __pycache__/
 *.pyc
+perry/logs/
+perry/vision_test.jpg

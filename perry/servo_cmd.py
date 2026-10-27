@@ -54,7 +54,7 @@ def main(argv):
             missing = [j for j, v in pose.items() if v is None]
             if missing:
                 raise SystemExit(f"La pose '{argv[1]}' no tiene pulso para: {', '.join(missing)}")
-            move_via_top(m, cfg, pose)
+            move_via_top(m, cfg, pose, precise_base=False)
             print(f"pose {argv[1]} lista")
         elif cmd == "up":
             ch = {j: cfg["joints"][j]["channel"] for j in cfg["travel"]}
