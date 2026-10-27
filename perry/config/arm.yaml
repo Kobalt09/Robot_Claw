@@ -4,7 +4,7 @@
 port: /dev/ttyACM0       # en Windows: Command Port de la Maestro (en la PC de Ignacio salió COM5)
 
 links:                   # cm, de eje a eje (medido el 14-10-2026)
-  E1: 3.3                # mesa -> eje del hombro
+  E1: 3.3                # mesa -> eje del hombro. OJO: las fotos de perfil dan 5–6 cm; volver a medir
   E2: 10.0               # hombro -> codo
   E3: 12.0               # codo -> muñeca
   E45: 10.13             # muñeca -> punta de la pinza cerrada
@@ -14,29 +14,53 @@ approach_z: 5.0          # cuánto más arriba se acerca antes de bajar (cm)
 
 speed: 20                # velocidad de la Maestro (0 = sin límite)
 acceleration: 5
+descent_speed: 6         # velocidad del hombro al bajar: con el brazo estirado no alcanza a frenar y golpea
 
-# cal: dos puntos [ángulo, pulso]. Reemplazar null por lo anotado en la hoja de registro.
+# cal: dos puntos [ángulo, pulso].
 joints:
-  # base: bajar pulso = izquierda, ~12,4 us/°. 520 (~78° izq.) y 2150 (~55° der.) sin zumbar.
-  # 2100 deja la pinza sobre el contenedor verde. 45° = 910 medido con la cámara (±3°) (14-10)
-  base:   {channel: 0,  cal: [[0, 1470],   [45, 910]], min: 520, max: 2150}
-  # OJO hombro/codo/muneca: PROVISORIOS. Medidos con cámara en diagonal; en T2 (16,0,6) la pinza
-  # se pasó de largo y quedó inclinada hacia afuera. Recalibrar con posturas enseñadas (T1–T3).
-  # hombro: bajar pulso = hacia adelante, ~5,6 us/° (¡más sensible que el resto!). Cámara lateral ±3° (14-10)
+  # base: bajar pulso = izquierda. Tiene ~7° de juego: se llega SIEMPRE desde abajo (pulso - backlash_us).
+  # Calibrada por tramos con puntos tocados de verdad (20-10); no es lineal (~11 us/° a la derecha,
+  # menos a la izquierda). -36.6° = esquina cercana derecha, +36.6° = esquina cercana izquierda.
+  base:   {channel: 0,  cal: [[-36.6, 1915], [0, 1504], [36.6, 1121]], min: 520, max: 2150, backlash_us: 100}
+  # hombro/codo/muneca: la cal es PROVISORIA (fotos, ±3°). Para ir a un punto se usa la tabla `reach`.
+  # hombro: bajar pulso = hacia adelante, ~6,5 us/° según las fotos de perfil del 20-10
   hombro: {channel: 2,  cal: [[110, 1500], [56, 1200]], min: 500, max: 2500}
-  # codo: bajar pulso = abre (se estira), ~13,4 us/°. Cámara lateral ±3° (14-10)
+  # codo: bajar pulso = abre (se estira)
   codo:   {channel: 4,  cal: [[117, 1100], [76, 1650]], min: 500, max: 2500}
-  # muneca: subir pulso = pinza hacia abajo, ~9,5 us/°. Medido con cámara lateral (±3°) (14-10)
+  # muneca: subir pulso = pinza hacia abajo
   muneca: {channel: 6,  cal: [[160, 1500], [118, 1900]], min: 500, max: 2500}
-  giro:   {channel: 8,  cal: [[0, null],   [90, null]], min: 500, max: 2500}
+  # giro: 0° = 1447, ~10 us/°. Subir pulso = antihorario visto desde arriba (comprobado con la cenital
+  # el 20-10: con el signo al revés fallaban los cubos girados del lado izquierdo).
+  giro:   {channel: 8,  cal: [[0, 1447],   [45, 1896]], min: 500, max: 2500}
 
-gripper: {channel: 10, open: null, closed: null, min: 500, max: 2500}
+# pinza: 750 abierta; 1500 aprieta un cubo de ~2 cm (probado: lo levanta); ~1700 cerrada del todo
+gripper: {channel: 10, open: 750, closed: 1500, min: 500, max: 2500}
 
-# Posiciones fijas: pulso por canal (base, hombro, codo, muneca, giro, pinza).
+# Posturas enseñadas: la punta toca el papel. r = distancia al eje de la base (cm).
+# Origen: poses del Maestro Control Center (20-10) sobre el rectángulo de 16,5 × 8,5 cm
+# (X de 11,1 a 19,6 cm). La fila de 21,3 tiene la pinza inclinada. Agregar filas a 12, 18 y 19,5.
+reach:
+  approach_shoulder_us: 100   # para acercarse: el hombro va hacia atrás esto (la punta sube unos cm)
+  grip_shoulder_offset_us: -30  # 27-10: con el resorte nuevo el brazo queda más alto; se baja el hombro esto al agarrar
+  rows:
+    - {r: 13.83, hombro: 1321, codo: 1568, muneca: 2088}   # esquinas cercanas
+    - {r: 15.35, hombro: 1302, codo: 1521, muneca: 2006}   # centro del rectángulo
+    - {r: 16.0,  hombro: 1270, codo: 1426, muneca: 2042}   # primer agarre real de un cubo (20-10)
+    - {r: 18.06, hombro: 1195, codo: 1198, muneca: 2094}   # agarre real en (17,3; -5,2) (20-10)
+    - {r: 21.2,  hombro: 1150, codo: 836,  muneca: 2189}   # pinza vertical, punta sobre la mesa (visto en (18,9; 7,3) +1 cm)
+    # descartadas: {r: 19.5, hombro: 1200, codo: 1040, muneca: 2130} (se pasaba y empujaba los cubos)
+    #              {r: 21.27, hombro: 1263, codo: 667, muneca: 2331} (pinza inclinada; hacía flotar la punta)
+
+# Pose de traslado: brazo alto (punta a ~12 cm) para girar la base sin barrer contenedores ni cubos.
+# Todo movimiento sube aquí primero, gira arriba y baja al final. Sin base ni giro: no los toca.
+travel: {hombro: 1450, codo: 1300, muneca: 2000}
+
+# Posiciones fijas: pulso por canal (base, hombro, codo, muneca, giro). Cajas del Control Center.
 poses:
-  inicio:   {base: null, hombro: null, codo: null, muneca: null, giro: null}
-  amarillo: {base: null, hombro: null, codo: null, muneca: null, giro: null}
-  verde:    {base: null, hombro: null, codo: null, muneca: null, giro: null}
+  vista:    {base: 2100}   # brazo arriba y girado a la derecha: no tapa la zona a la cámara cenital
+  inicio:   {base: 1479, hombro: 1400, codo: 1521, muneca: 2006, giro: 1447}
+  amarillo: {base: 865,  hombro: 1244, codo: 737,  muneca: 2496, giro: 2059}   # caja izquierda
+  verde:    {base: 2079, hombro: 1244, codo: 737,  muneca: 2496, giro: 952}    # caja derecha
 
 # A qué contenedor va cada color.
 containers: {amarillo: amarillo, azul: verde}

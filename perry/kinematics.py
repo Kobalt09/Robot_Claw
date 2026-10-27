@@ -34,8 +34,16 @@ def inverse_kinematics(x, y, z, links, cube_angle=0.0):
 
 
 def angle_to_us(joint, deg):
-    """Interpola en línea recta entre los dos puntos de calibración del servo."""
-    (a1, p1), (a2, p2) = joint["cal"]
-    if p1 is None or p2 is None:
+    """Interpola en línea recta entre los puntos de calibración [ángulo, pulso] del servo.
+
+    Con dos puntos es una recta. Con más, se interpola por tramos (sirve si el servo no es
+    lineal); fuera del rango se prolonga el tramo más cercano.
+    """
+    cal = sorted(joint["cal"])
+    if any(p is None for _, p in cal):
         raise ValueError("falta calibrar este servo (pulsos en arm.yaml)")
+    i = 1
+    while i < len(cal) - 1 and deg > cal[i][0]:
+        i += 1
+    (a1, p1), (a2, p2) = cal[i - 1], cal[i]
     return p1 + (deg - a1) * (p2 - p1) / (a2 - a1)
