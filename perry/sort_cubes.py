@@ -152,7 +152,9 @@ def main():
             # verificar CONTANDO: el agarre salió solo si hay un cubo menos de ese color
             after = look(cfg, m, cam, log, f"verificacion{cycle}")
             if not grab_succeeded(cubes, after, c):
-                key = (round(c.x), round(c.y))
+                # el mismo cubo = el intento anterior más cercano (un agarre fallido lo corre unos mm;
+                # redondear la posición le cambiaba la "identidad" y los reintentos no tenían tope)
+                key = next((k for k in tries if hypot(k[0] - c.x, k[1] - c.y) < 2 * s["same_cube_cm"]), (c.x, c.y))
                 tries[key] = tries.get(key, 0) + 1
                 near = min(after, key=lambda d: hypot(d.x - c.x, d.y - c.y), default=None)
                 where = f" (el más cercano quedó en ({near.x:.1f}, {near.y:.1f}))" if near else ""
