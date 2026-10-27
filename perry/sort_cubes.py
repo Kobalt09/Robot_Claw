@@ -26,7 +26,7 @@ import yaml
 from grasp import GraspCfg, choose_grasp, plan_push
 from maestro import Maestro
 from reach import pulses_at, move_via_top, lower_shoulder, push, OutOfTable
-from vision import TopCamera
+from vision import TopCamera, save_image
 
 HERE = Path(__file__).parent
 
@@ -43,7 +43,8 @@ class Log:
         self.file.write(line + "\n"); self.file.flush()
 
     def image(self, name, img):
-        cv2.imwrite(str(self.dir / f"{time.strftime('%H-%M-%S')}_{name}.jpg"), img)
+        if not save_image(self.dir / f"{time.strftime('%H-%M-%S')}_{name}.jpg", img):
+            self(f"[aviso] no se pudo guardar la foto {name}")
 
 
 def reachable(cfg, cube):
@@ -131,7 +132,7 @@ def main():
                     f"({plan.cube.x:.1f}, {plan.cube.y:.1f}) {gcfg.push:.1f} cm hacia ({dx:+.2f}, {dy:+.2f}).")
                 if not a.run:
                     log("Modo prueba: no se mueve nada. Agrega --run."); break
-                push(cfg, m, plan.start, plan.end, degrees(atan2(dy, dx)))
+                push(m, cfg, plan.start, plan.end, degrees(atan2(dy, dx)))
                 pushes += 1
                 continue
             c, grasp_dir = choice

@@ -21,6 +21,38 @@ from codigo_python.detector_colores import DetectorColores  # noqa: E402
 from codigo_python.camara_stream import CapturaCamara  # noqa: E402
 
 
+def save_image(path, img):
+    """Guarda una imagen. cv2.imwrite falla EN SILENCIO en Windows si la ruta tiene tildes
+    (p. ej. 'Informática'); codificar en memoria y escribir con Python funciona siempre."""
+    ok, buf = cv2.imencode(Path(path).suffix or ".jpg", img)
+    if ok:
+        Path(path).write_bytes(buf.tobytes())
+    return ok
+
+
+def split_blob(points_cm, cube):
+    """Separa una mancha de cubos del mismo color pegados en cubos individuales.
+
+    points_cm: contorno de la mancha ya pasado a cm (N x 2). Los rastrillos dejan los cubos de
+    una pasada con la misma orientación, así que la mancha es un rectángulo de n x m cubos:
+    se cuenta cuántos caben en cada arista del rectángulo mínimo y se reparte.
+    Devuelve [(x, y, ángulo)] con el ángulo en [-45, 45).
+    """
+    box = cv2.boxPoints(cv2.minAreaRect(np.float32(points_cm)))
+    e0, e1 = box[1] - box[0], box[2] - box[1]
+    l0, l1 = float(np.hypot(*e0)), float(np.hypot(*e1))
+    u0, u1 = e0 / l0, e1 / l1
+    n0, n1 = max(1, round(l0 / cube)), max(1, round(l1 / cube))
+    c = box.mean(axis=0)
+    angle = (degrees(atan2(u0[1], u0[0])) + 45) % 90 - 45
+    out = []
+    for i in range(n0):
+        for j in range(n1):
+            p = c + (i - (n0 - 1) / 2) * (l0 / n0) * u0 + (j - (n1 - 1) / 2) * (l1 / n1) * u1
+            out.append((float(p[0]), float(p[1]), angle))
+    return out
+
+
 @dataclass
 class Cube:
     color: str
@@ -36,7 +68,8 @@ class TopCamera:
     def __init__(self, cfg):
         c = cfg["camera"]
         self.cfg = c
-        self.H = cv2.getPerspectiveTransform(np.float32(c["corners_px"]), np.float32(c["corners_cm"]))
+        self.cube_cm = cfg["grasp"]["cube"]
+        self.H =cv2.getPerspectiveTransform(np.float32(c["corners_px"]), np.float32(c["corners_cm"]))
         self.det = DetectorColores(area_minima=c["min_area_px"])
         self.det.rangos_colores.clear()
         for name, ranges in c["colors"].items():
@@ -70,11 +103,11 @@ class TopCamera:
             x, y = self.px_to_cm(*d.centroide)
             if not (z["x_min"] <= x <= z["x_max"] and abs(y) <= z["y_abs"]):
                 continue
-            # ángulo con una arista del rectángulo mínimo, pasada a cm (sin perspectiva)
-            box = cv2.boxPoints(cv2.minAreaRect(d.contorno))
-            (x0, y0), (x1, y1) = self.px_to_cm(*box[0]), self.px_to_cm(*box[1])
-            angle = (degrees(atan2(y1 - y0, x1 - x0)) + 45) % 90 - 45
-            cubes.append(Cube(d.color, x, y, angle, d.area))
+            # contorno a cm (sin perspectiva) y separar cubos pegados del mismo color
+            pts = cv2.perspectiveTransform(np.float32(d.contorno).reshape(-1, 1, 2), self.H).reshape(-1, 2)
+            parts = split_blob(pts, self.cube_cm)
+            for px, py, angle in parts:
+                cubes.append(Cube(d.color, px, py, angle, d.area / len(parts)))
         cubes.sort(key=lambda c: -c.area)
         return cubes, self.det.dibujar_detecciones(f, detections)
 
@@ -89,5 +122,5 @@ if __name__ == "__main__":
         print(f"{c.color:9s} ({c.x:5.1f}, {c.y:5.1f}) cm  girado {c.angle:+.0f}°")
     if not cubes:
         print("No hay cubos en la zona.")
-    cv2.imwrite(str(Path(__file__).parent / "vision_test.jpg"), img)
+    save_image(Path(__file__).parent / "vision_test.jpg", img)
     print("Imagen: vision_test.jpg")
