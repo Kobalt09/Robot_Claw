@@ -25,8 +25,9 @@ class OutOfTable(ValueError):
 def interp_reach(cfg, r, level="grip"):
     """Pulsos de hombro, codo y muñeca para la distancia r (cm), interpolando la tabla."""
     rows = sorted(cfg["reach"]["rows"], key=lambda row: row["r"])
-    if not rows[0]["r"] <= r <= rows[-1]["r"]:
-        raise OutOfTable(f"r = {r:.1f} cm fuera de la tabla enseñada [{rows[0]['r']}, {rows[-1]['r']}]")
+    r_max = min(rows[-1]["r"], cfg["reach"].get("max_r", rows[-1]["r"]))
+    if not rows[0]["r"] <= r <= r_max:
+        raise OutOfTable(f"r = {r:.1f} cm fuera de alcance [{rows[0]['r']}, {r_max}]")
     for lo, hi in zip(rows, rows[1:]):
         if lo["r"] <= r <= hi["r"]:
             t = (r - lo["r"]) / (hi["r"] - lo["r"]) if hi["r"] > lo["r"] else 0.0
@@ -38,11 +39,20 @@ def interp_reach(cfg, r, level="grip"):
     return us
 
 
-def pulses_at(cfg, x, y, cube_angle=0.0, level="grip"):
-    """Pulsos de base, hombro, codo, muñeca y giro para dejar la pinza sobre (x, y)."""
+def pulses_at(cfg, x, y, cube_angle=0.0, level="grip", grasp_dir=None):
+    """Pulsos de base, hombro, codo, muñeca y giro para dejar la pinza sobre (x, y).
+
+    grasp_dir: dirección (grados, en la mesa) en que deben cerrar los dedos. Si se da, el giro
+    va a [-90, 90) y permite elegir cualquiera de los dos ejes del cubo. Si no, se usa el eje
+    del cubo más cercano (giro en [-45, 45]).
+    """
     base = degrees(atan2(y, x))
-    # el cubo es simétrico cada 90°: el giro relativo se lleva a [-45, 45]
-    giro = ((cube_angle - base + 45) % 90) - 45
+    if grasp_dir is not None:
+        # con giro 0 los dedos cierran perpendiculares al brazo (base + 90°); la pinza es simétrica cada 180°
+        giro = ((grasp_dir - 90.0 - base + 90.0) % 180.0) - 90.0
+    else:
+        # el cubo es simétrico cada 90°: el giro relativo se lleva a [-45, 45]
+        giro = ((cube_angle - base + 45) % 90) - 45
     us = interp_reach(cfg, hypot(x, y), level)
     us["base"] = angle_to_us(cfg["joints"]["base"], base)
     us["giro"] = angle_to_us(cfg["joints"]["giro"], giro)
@@ -70,6 +80,34 @@ def move_via_top(m, cfg, target, precise_base=True):
             m.set_us(ch[j], target[j]); m.wait()
     if "hombro" in target:
         lower_shoulder(m, cfg, target["hombro"])
+
+
+def push(m, cfg, start, end, direction):
+    """Empuja cubos: baja la pinza CERRADA en `start` y la desliza hasta `end` sin subir.
+
+    direction: dirección del empuje (grados). Los dedos cierran a lo largo de ella, así la pinza
+    cerrada presenta su cara ancha al cubo. Avanza de a push_step_cm, todo el brazo a la vez.
+    """
+    g = cfg["gripper"]
+    ch = {j: cfg["joints"][j]["channel"] for j in cfg["joints"]}
+    lift = cfg["push_lift_us"]
+    m.set_us(g["channel"], g["closed"]); m.wait()
+    high = pulses_at(cfg, *start, level="approach", grasp_dir=direction)
+    move_via_top(m, cfg, high)
+    low = pulses_at(cfg, *start, level="grip", grasp_dir=direction)
+    lower_shoulder(m, cfg, low["hombro"] + lift)
+    dist = hypot(end[0] - start[0], end[1] - start[1])
+    steps = max(1, int(dist / cfg["push_step_cm"]))
+    for i in range(1, steps + 1):
+        t = i / steps
+        x, y = start[0] + t * (end[0] - start[0]), start[1] + t * (end[1] - start[1])
+        p = pulses_at(cfg, x, y, level="grip", grasp_dir=direction)
+        p["hombro"] += lift
+        for j in ("base", "giro", "codo", "muneca", "hombro"):
+            m.set_us(ch[j], p[j])
+        m.wait()
+    for j, us in cfg["travel"].items():          # subir en vertical antes de cualquier giro
+        m.set_us(ch[j], us); m.wait()
 
 
 def lower_shoulder(m, cfg, us):

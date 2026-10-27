@@ -17,14 +17,15 @@ Puerto: variable PERRY_PORT (en Windows, por ejemplo COM5) o el de arm.yaml.
 import argparse
 import os
 import time
-from math import hypot
+from math import atan2, degrees, hypot
 from pathlib import Path
 
 import cv2
 import yaml
 
+from grasp import GraspCfg, choose_grasp, plan_push
 from maestro import Maestro
-from reach import pulses_at, move_via_top, lower_shoulder, OutOfTable
+from reach import pulses_at, move_via_top, lower_shoulder, push, OutOfTable
 from vision import TopCamera
 
 HERE = Path(__file__).parent
@@ -48,7 +49,8 @@ class Log:
 def reachable(cfg, cube):
     rows = cfg["reach"]["rows"]
     r = hypot(cube.x, cube.y)
-    return min(row["r"] for row in rows) <= r <= max(row["r"] for row in rows)
+    r_max = min(max(row["r"] for row in rows), cfg["reach"].get("max_r", 99))
+    return min(row["r"] for row in rows) <= r <= r_max
 
 
 def look(cfg, m, cam, log, tag):
@@ -60,11 +62,11 @@ def look(cfg, m, cam, log, tag):
     return cubes
 
 
-def pick(cfg, m, cube):
-    """Agarra el cubo y lo deja arriba, en la pose de traslado."""
+def pick(cfg, m, cube, grasp_dir):
+    """Agarra el cubo cerrando en `grasp_dir` y lo deja arriba, en la pose de traslado."""
     g = cfg["gripper"]
-    high = pulses_at(cfg, cube.x, cube.y, cube.angle, level="approach")
-    low = pulses_at(cfg, cube.x, cube.y, cube.angle, level="grip")
+    high = pulses_at(cfg, cube.x, cube.y, level="approach", grasp_dir=grasp_dir)
+    low = pulses_at(cfg, cube.x, cube.y, level="grip", grasp_dir=grasp_dir)
     m.set_us(g["channel"], g["open"]); m.wait()
     move_via_top(m, cfg, high)                       # por arriba, base precisa, pinza girada
     lower_shoulder(m, cfg, low["hombro"])            # baja lento
@@ -97,30 +99,49 @@ def main():
     with Maestro(os.environ.get("PERRY_PORT", cfg["port"]), limits=limits) as m, TopCamera(cfg) as cam:
         for ch in limits:
             m.set_speed(ch, cfg["speed"]); m.set_acceleration(ch, cfg["acceleration"])
+        gcfg = GraspCfg(**cfg["grasp"])
         ignored = []      # (x, y) de cubos que no se pueden o no se pudieron agarrar
         tries = {}        # intentos por posición aproximada
-        done = 0
+        done = pushes = 0
+
+        def is_ignored(c):
+            return any(hypot(c.x - x, c.y - y) <= s["same_cube_cm"] for x, y in ignored)
+
+        def can_try(c):   # candidato: alcanzable, no ignorado y con contenedor para su color
+            return reachable(cfg, c) and not is_ignored(c) and (a.to or cfg["containers"].get(c.color))
+
         for cycle in range(1, s["max_cycles"] + 1):
-            cubes = look(cfg, m, cam, log, f"vista{cycle}")
-            todo = [c for c in cubes if all(hypot(c.x - x, c.y - y) > s["same_cube_cm"] for x, y in ignored)]
-            for c in todo:
-                if not reachable(cfg, c):
+            cubes = look(cfg, m, cam, log, f"vista{cycle}")   # TODOS: también son obstáculos
+            for c in cubes:
+                if not is_ignored(c) and not reachable(cfg, c):
                     log(f"Cubo {c.color} en ({c.x:.1f}, {c.y:.1f}) está FUERA DE ALCANCE "
                         f"(r = {hypot(c.x, c.y):.1f} cm). Lo ignoro.")
                     ignored.append((c.x, c.y))
-            todo = [c for c in todo if reachable(cfg, c)]
-            if not todo:
+            if not any(can_try(c) for c in cubes):
                 log(f"No quedan cubos alcanzables. Clasificados: {done}. Ignorados: {len(ignored)}.")
                 break
-            c = todo[0]
-            container = a.to or cfg["containers"].get(c.color)
-            if container is None:
-                log(f"Color {c.color} sin contenedor en arm.yaml: lo ignoro."); ignored.append((c.x, c.y)); continue
-            log(f"Ciclo {cycle}: cubo {c.color} en ({c.x:.1f}, {c.y:.1f}) girado {c.angle:+.0f}° -> {container}")
+            choice = choose_grasp(cubes, gcfg, can_try)
+            if choice is None:
+                plan = plan_push(cubes, gcfg, can_try, point_ok=lambda p: reachable(cfg, p))
+                if plan is None or pushes >= s["max_pushes"]:
+                    log("Hay cubos pero ninguno se puede agarrar ni separar empujando. Me detengo.")
+                    break
+                dx, dy = plan.direction
+                log(f"Ciclo {cycle}: ningún cubo tiene un eje libre (bloque). Empujo el cubo en "
+                    f"({plan.cube.x:.1f}, {plan.cube.y:.1f}) {gcfg.push:.1f} cm hacia ({dx:+.2f}, {dy:+.2f}).")
+                if not a.run:
+                    log("Modo prueba: no se mueve nada. Agrega --run."); break
+                push(cfg, m, plan.start, plan.end, degrees(atan2(dy, dx)))
+                pushes += 1
+                continue
+            c, grasp_dir = choice
+            container = a.to or cfg["containers"][c.color]
+            log(f"Ciclo {cycle}: cubo {c.color} en ({c.x:.1f}, {c.y:.1f}) girado {c.angle:+.0f}°, "
+                f"cierro a {grasp_dir % 180:.0f}° -> {container}")
             if not a.run:
                 log("Modo prueba: no se mueve nada. Agrega --run."); break
             try:
-                pick(cfg, m, c)
+                pick(cfg, m, c, grasp_dir)
             except OutOfTable as e:
                 log(f"No se puede llegar: {e}. Lo ignoro."); ignored.append((c.x, c.y)); continue
             # verificar: si sigue un cubo ahí, el agarre falló

@@ -29,12 +29,14 @@ joints:
   codo:   {channel: 4,  cal: [[117, 1100], [76, 1650]], min: 500, max: 2500}
   # muneca: subir pulso = pinza hacia abajo
   muneca: {channel: 6,  cal: [[160, 1500], [118, 1900]], min: 500, max: 2500}
-  # giro: 0° = 1447, ~10 us/°. Subir pulso = antihorario visto desde arriba (comprobado con la cenital
-  # el 20-10: con el signo al revés fallaban los cubos girados del lado izquierdo).
-  giro:   {channel: 8,  cal: [[0, 1447],   [45, 1896]], min: 500, max: 2500}
+  # giro: 0° = 1447 (dedos cierran de izquierda a derecha con la base a 0°), ~10 us/°.
+  # Subir pulso = HORARIO visto desde arriba (comprobado a ojo el 27-10). El 20-10 se invirtió por
+  # error mirando la cenital y agarraba los cubos por los vértices.
+  giro:   {channel: 8,  cal: [[0, 1447],   [45, 998]], min: 500, max: 2500}
 
-# pinza: 750 abierta; 1600 aprieta un cubo de ~2 cm sin soltarlo en el giro; ~1700 cerrada del todo
-gripper: {channel: 10, open: 750, closed: 1600, min: 500, max: 2500}
+# pinza: 750 abierta. 1700 = cierre firme (27-10: con 1500/1600 el agarre quedaba al límite y a
+# veces el cubo se escurría; con 1700 lo sostiene sin zumbido continuo).
+gripper: {channel: 10, open: 750, closed: 1700, min: 500, max: 2500}
 
 # Cámara cenital. Si la mueven: py calibrate_camera.py (vuelve a marcar las 4 esquinas).
 camera:
@@ -50,20 +52,38 @@ camera:
     azul:     [[[95, 100, 50], [130, 255, 255]]]
     amarillo: [[[18, 90, 90],  [35, 255, 255]]]
 
+# Planificación de agarre con cubos agrupados (grasp.py). Medidas en cm.
+grasp:
+  cube: 1.9
+  finger_thick: 0.5
+  finger_width: 1.9
+  opening: 4.1         # apertura con gripper.open. Pre-cerrar (~2,9 cm) libera más cubos: falta
+                       # medir qué pulso da 2,9 cm y poner aquí 2.9 y ese pulso en gripper.open
+  error: 0.5           # error de posición esperado de la punta
+  push: 3.0            # cuánto se desliza una fila al empujarla (2x2 -> filas corridas)
+  w_giro: 0.3
+  w_r: 0.02
+push_lift_us: 20       # al empujar, la pinza va este tanto (hombro) más alta que al agarrar
+push_step_cm: 0.5      # el empuje avanza de a estos cm
+
 # Ciclo automático (sort_cubes.py)
 sort:
   same_cube_cm: 1.5        # si tras agarrar hay un cubo a menos de esto del objetivo, el agarre falló
   retries: 1               # reintentos por cubo antes de darlo por perdido
   max_cycles: 12           # tope de vueltas del ciclo (seguridad)
+  max_pushes: 3            # tope de empujes por ronda
   log_dir: logs            # fotos y registro de cada corrida (dentro de perry/)
 
 # Posturas enseñadas: la punta toca el papel. r = distancia al eje de la base (cm).
 # Origen: poses del Maestro Control Center (20-10) sobre el rectángulo de 16,5 × 8,5 cm
 # (X de 11,1 a 19,6 cm). La fila de 21,3 tiene la pinza inclinada. Agregar filas a 12, 18 y 19,5.
 reach:
+  max_r: 19.5     # LÍMITE DURO (cm): más lejos el hombro no aguanta el brazo estirado y se desploma
+                  # (27-10, con el resorte). Coincide con la franja de entrega 12–19,5 cm.
   approach_shoulder_us: 100   # para acercarse: el hombro va hacia atrás esto (la punta sube unos cm)
   grip_shoulder_offset_us: -30  # 27-10: con el resorte nuevo el brazo queda más alto; se baja el hombro esto al agarrar
   rows:
+    - {r: 13.19, hombro: 1323, codo: 1573, muneca: 2097}   # cubo real en (13,1; 1,5), verificado a ojo (27-10)
     - {r: 13.83, hombro: 1321, codo: 1568, muneca: 2088}   # esquinas cercanas
     - {r: 15.35, hombro: 1302, codo: 1521, muneca: 2006}   # centro del rectángulo
     - {r: 16.0,  hombro: 1270, codo: 1426, muneca: 2042}   # primer agarre real de un cubo (20-10)
@@ -84,4 +104,4 @@ poses:
   verde:    {base: 2079, hombro: 1244, codo: 737,  muneca: 2496, giro: 952}    # caja derecha
 
 # A qué contenedor va cada color.
-containers: {amarillo: amarillo, azul: verde}
+containers: {azul: amarillo, amarillo: verde}   # 27-10: cubos azules -> caja amarilla, amarillos -> caja verde

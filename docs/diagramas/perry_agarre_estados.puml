@@ -1,0 +1,109 @@
+@startuml perry_agarre_estados
+title Perry: clasificación de cubos que llegan agrupados por los rastrillos
+hide empty description
+skinparam state {
+  BackgroundColor<<accion>> #E1F5EE
+  BackgroundColor<<decision>> #FAEEDA
+  BackgroundColor<<error>> #FCEBEB
+}
+
+[*] --> Estacionar
+
+state "Estacionar" as Estacionar <<accion>> : brazo arriba y girado (pose vista)\npara no tapar la cámara cenital
+
+state "Observar" as Observar <<accion>> {
+  state "Capturar imagen" as Capturar
+  state "Detectar cubos (HSV)" as Detectar
+  state "Modelar cada cubo" as Modelar : cuadrado orientado en cm\n(centro, ángulo, color)\nvía homografía
+  [*] --> Capturar
+  Capturar --> Detectar
+  Detectar --> Modelar
+  Modelar --> [*]
+}
+
+state "Evaluar candidatos" as Evaluar <<decision>> {
+  state "Filtrar alcanzables" as Alcance : r_min <= r <= max_r (19,5 cm)
+  state "Probar los 2 ejes de agarre" as Ejes : eje A = ángulo del cubo\neje B = ángulo + 90°
+  state "¿Eje libre?" as Libre : huella de los 2 dedos sin chocar\ncon otros cubos (+ margen)
+  state "Puntuar" as Puntuar : + holgura del eje\n+ cercanía al brazo\n+ libera vecinos (extremo de fila)\n- giro de pinza grande
+  [*] --> Alcance
+  Alcance --> Ejes
+  Ejes --> Libre
+  Libre --> Puntuar
+  Puntuar --> [*]
+}
+
+state "Agarrar" as Agarrar <<accion>> {
+  state "Pre-cerrar pinza" as PreCerrar : apertura = cubo + 2·error (~2,9 cm)
+  state "Llegar por arriba" as Llegar : base desde abajo (juego ~7°)\npinza girada al eje libre
+  state "Bajar lento" as Bajar
+  state "Cerrar firme" as Cerrar : pinza 1700
+  state "Subir en vertical" as Subir
+  [*] --> PreCerrar
+  PreCerrar --> Llegar
+  Llegar --> Bajar
+  Bajar --> Cerrar
+  Cerrar --> Subir
+  Subir --> [*]
+}
+
+state "Verificar agarre" as Verificar <<decision>> : estacionar y volver a mirar:\n¿sigue el cubo en su lugar?
+
+state "Depositar" as Depositar <<accion>> : contenedor según color\n(azul -> amarillo, amarillo -> verde)\npor arriba, base directa, abrir
+
+state "Separar grupo" as Separar <<accion>> {
+  state "Elegir grupo bloqueado" as ElegirGrupo : p. ej. bloque 2x2
+  state "Elegir fila y dirección" as Direccion : empujar hacia espacio libre\ny dentro de max_r
+  state "Empujar" as Empujar : pinza cerrada, a media altura,\ndesplazar ~2 cm (giro de base)
+  [*] --> ElegirGrupo
+  ElegirGrupo --> Direccion
+  Direccion --> Empujar
+  Empujar --> [*]
+}
+
+state "Esperar / avisar" as Esperar <<decision>> : quedan solo cubos fuera de alcance\no ninguno: avisar (MQTT) a los carros
+
+state "Error seguro" as Error <<error>> : abrir pinza, estacionar,\nregistrar y detener
+
+Estacionar --> Observar
+Observar --> Evaluar : hay cubos en la zona
+Observar --> Esperar : zona vacía
+
+Evaluar --> Agarrar : hay candidato con eje libre\n(el de mayor puntaje)
+Evaluar --> Separar : hay alcanzables pero ninguno\ntiene eje libre (p. ej. 2x2)
+Evaluar --> Esperar : solo inalcanzables
+
+Agarrar --> Verificar
+Verificar --> Depositar : el cubo ya no está
+Verificar --> Estacionar : falló e intentos <= reintentos\n(vuelve a mirar: el cubo pudo moverse)
+Verificar --> Evaluar : falló demasiadas veces\n(marcar cubo como ignorado)
+
+Depositar --> Estacionar : siguiente cubo
+
+Separar --> Estacionar : volver a mirar\n(los cubos se movieron)
+Separar --> Esperar : separación falló N veces
+
+Esperar --> Estacionar : llegan cubos nuevos
+Esperar --> [*] : fin de la ronda
+
+Observar --> Error : cámara sin imagen
+Agarrar --> Error : Maestro desconectada /\nfuera de alcance inesperado
+Error --> [*]
+
+note right of Evaluar
+  Huella de un dedo, a lo largo del eje y desde la cara del cubo:
+    desde (apertura - cubo)/2
+    hasta (apertura - cubo)/2 + grosor_dedo
+  Libre si ningún otro cubo (inflado por el error de
+  posición, ~0,5 cm) cruza ninguna de las 2 huellas.
+  Medidas: pinza abierta 4,1 cm, cubo 1,9 cm, dedo 0,5 cm.
+  Pre-cerrada a 2,9 cm: hacen falta ~1,5 cm libres por lado.
+end note
+
+note right of Separar
+  Los rastrillos dejan los cubos en filas o bloques,
+  con la misma orientación por color en cada pasada.
+  2x2: ningún cubo tiene un eje libre ->
+  se empuja una fila para dejar 2 + 2 separados.
+end note
+@enduml
