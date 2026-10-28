@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1496.8841666666667 567.6000000000001" width="1496.8841666666667" height="567.6000000000001" style="--bg:#18181B;--fg:#F4F4F5;--line:#71717A;--muted:#A1A1AA;--surface:#27272A;--border:#3F3F46;background:var(--bg)">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap');
+  text { font-family: 'Inter', system-ui, sans-serif; }
+  svg {
+    /* Derived from --bg and --fg (overridable via --line, --accent, etc.) */
+    --_text:          var(--fg);
+    --_text-sec:      var(--muted, color-mix(in srgb, var(--fg) 60%, var(--bg)));
+    --_text-muted:    var(--muted, color-mix(in srgb, var(--fg) 40%, var(--bg)));
+    --_text-faint:    color-mix(in srgb, var(--fg) 25%, var(--bg));
+    --_line:          var(--line, color-mix(in srgb, var(--fg) 50%, var(--bg)));
+    --_arrow:         var(--accent, color-mix(in srgb, var(--fg) 85%, var(--bg)));
+    --_node-fill:     var(--surface, color-mix(in srgb, var(--fg) 3%, var(--bg)));
+    --_node-stroke:   var(--border, color-mix(in srgb, var(--fg) 20%, var(--bg)));
+    --_group-fill:    var(--bg);
+    --_group-hdr:     color-mix(in srgb, var(--fg) 5%, var(--bg));
+    --_inner-stroke:  color-mix(in srgb, var(--fg) 12%, var(--bg));
+    --_key-badge:     color-mix(in srgb, var(--fg) 10%, var(--bg));
+  }
+</style>
+<defs>
+  <marker id="arrowhead" markerWidth="8" markerHeight="5" refX="7" refY="2.5" orient="auto">
+    <polygon points="0 0, 8 2.5, 0 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
+  </marker>
+  <marker id="arrowhead-start" markerWidth="8" markerHeight="5" refX="1" refY="2.5" orient="auto-start-reverse">
+    <polygon points="8 0, 0 2.5, 8 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
+  </marker>
+</defs>
+<polyline class="edge" data-from="_start" data-to="STOP" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Encendido / Inicio" points="200.0341666666668,374.4000000000001 200.0341666666668,466.7000000000001 247.4043333333334,466.7000000000001 247.4043333333334,483.1500000000001" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="STOP" data-to="SCANNING" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Iniciar / Servos energizados (&gt;0 us)" points="286.1633333333334,483.1500000000001 286.1633333333334,478.7000000000001 743.1784619047619,478.7000000000001 743.1784619047619,419.30000000000007 946.4895380952382,419.30000000000007 946.4895380952382,383.3" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="SCANNING" data-to="FREE" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="0 cubos en zona + is_parked() == True" points="995.4760523809525,346.40000000000003 995.4760523809525,334.40000000000003 1362.2521666666667,334.40000000000003 1362.2521666666667,100.9 1194.086292857143,100.9 1194.086292857143,76.9" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="SCANNING" data-to="PICKING" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Hay cubo agarrable (grab) o grupo a separar (push)" points="949.5511952380954,346.40000000000003 949.5511952380954,310.40000000000003 861.3141666666667,310.40000000000003 861.3141666666667,233.8 352.5420238095239,233.8 352.5420238095239,76.90000000000006" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="SCANNING" data-to="BLOCKED" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Quedan cubos pero son inalcanzables / ignorados" points="967.9211380952382,383.3 967.9211380952382,419.30000000000007 966.336461904762,419.30000000000007 966.336461904762,463.6000000000001 1157.234,463.6000000000001 1157.234,483.1500000000001" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="FREE" data-to="RECEIVING" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="/zone/request aprobado a Ferb o Phineas" points="1155.327292857143,76.9 1155.327292857143,112.9 1069.8771666666667,112.9 1069.8771666666667,193.2" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="FREE" data-to="SCANNING" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Re-escaneo manual" points="1174.706792857143,76.9 1174.706792857143,112.9 1204.4381666666668,112.9 1204.4381666666668,322.40000000000003 980.1677666666668,322.40000000000003 980.1677666666668,346.40000000000003" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="RECEIVING" data-to="SCANNING" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="/zone/release recibido o lease expirado (60s)" points="1069.8771666666667,230.10000000000002 1069.8771666666667,310.40000000000003 964.8594809523811,310.40000000000003 964.8594809523811,346.40000000000003" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="PICKING" data-to="DROPPING" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="grab_succeeded() == True (1 cubo menos en mesa)" points="297.13922380952386,76.90000000000006 297.13922380952386,112.90000000000006 163,112.90000000000006 163,193.20000000000005" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="PICKING" data-to="SCANNING" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Después de push() o si falló el agarre (reintento)" points="334.07442380952386,76.90000000000006 334.07442380952386,254.10000000000008 607.6961666666667,254.10000000000008 607.6961666666667,322.40000000000003 934.2429095238097,322.40000000000003 934.2429095238097,346.40000000000003" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="DROPPING" data-to="SCANNING" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Cubo soltado en contenedor + regreso a vista" points="180.85966666666673,230.10000000000008 180.85966666666673,266.1000000000001 426.788,266.1000000000001 426.788,334.40000000000003 918.9346238095239,334.40000000000003 918.9346238095239,346.40000000000003" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="BLOCKED" data-to="SCANNING" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Zona despejada (auto-chequeo de cámara o botón web)" points="1191.9653333333333,483.1500000000001 1191.9653333333333,463.6000000000001 1234.3044619047619,463.6000000000001 1234.3044619047619,395.30000000000007 989.3527380952382,395.30000000000007 989.3527380952382,383.3" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="SCANNING" data-to="STOP" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Cancelar / Error de cámara o Maestro" points="925.0579380952382,383.3 925.0579380952382,407.30000000000007 548.328461904762,407.30000000000007 548.328461904762,466.7000000000001 273.24366666666674,466.7000000000001 273.24366666666674,483.1500000000001" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="PICKING" data-to="STOP" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Cancelar / Error" points="315.6068238095239,76.90000000000006 315.6068238095239,254.10000000000008 295.4680000000001,254.10000000000008 295.4680000000001,254.10000000000008 260.32400000000007,254.10000000000008 260.32400000000007,483.1500000000001" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="DROPPING" data-to="STOP" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Cancelar / Error" points="145.14033333333327,230.10000000000008 145.14033333333327,378.1000000000001 114.57016666666664,378.1000000000001 114.57016666666664,478.7000000000001 234.48466666666673,478.7000000000001 234.48466666666673,483.1500000000001" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<g class="edge-label" data-from="_start" data-to="STOP" data-label="Encendido / Inicio">
+  <rect x="149.5341666666668" y="417.4000000000001" width="100.21600000000004" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="199.6421666666668" y="432.55000000000007" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Encendido / Inicio</text>
+</g>
+<g class="edge-label" data-from="STOP" data-to="SCANNING" data-label="Iniciar / Servos energizados (&gt;0 us)">
+  <rect x="650.1784619047619" y="441.4000000000001" width="185.15800000000002" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="742.7574619047618" y="456.55000000000007" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Iniciar / Servos energizados (&gt;0 us)</text>
+</g>
+<g class="edge-label" data-from="SCANNING" data-to="FREE" data-label="0 cubos en zona + is_parked() == True">
+  <rect x="1263.2521666666667" y="297.1" width="197.63200000000006" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="1362.0681666666667" y="312.25" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">0 cubos en zona + is_parked() == True</text>
+</g>
+<g class="edge-label" data-from="SCANNING" data-to="PICKING" data-label="Hay cubo agarrable (grab) o grupo a separar (push)">
+  <rect x="730.8141666666667" y="240.8" width="260.002" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="860.8151666666666" y="255.95000000000002" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Hay cubo agarrable (grab) o grupo a separar (push)</text>
+</g>
+<g class="edge-label" data-from="SCANNING" data-to="BLOCKED" data-label="Quedan cubos pero son inalcanzables / ignorados">
+  <rect x="839.336461904762" y="426.30000000000007" width="253.468" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="966.070461904762" y="441.45000000000005" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Quedan cubos pero son inalcanzables / ignorados</text>
+</g>
+<g class="edge-label" data-from="FREE" data-to="RECEIVING" data-label="/zone/request aprobado a Ferb o Phineas">
+  <rect x="962.3771666666667" y="119.9" width="214.26400000000007" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="1069.5091666666667" y="135.05" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">/zone/request aprobado a Ferb o Phineas</text>
+</g>
+<g class="edge-label" data-from="FREE" data-to="SCANNING" data-label="Re-escaneo manual">
+  <rect x="1148.9381666666668" y="240.8" width="110.31400000000001" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="1204.0951666666667" y="255.95000000000002" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Re-escaneo manual</text>
+</g>
+<g class="edge-label" data-from="RECEIVING" data-to="SCANNING" data-label="/zone/release recibido o lease expirado (60s)">
+  <rect x="954.3771666666667" y="273.1" width="230.89600000000007" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="1069.8251666666667" y="288.25" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">/zone/release recibido o lease expirado (60s)</text>
+</g>
+<g class="edge-label" data-from="PICKING" data-to="DROPPING" data-label="grab_succeeded() == True (1 cubo menos en mesa)">
+  <rect x="36.000000000000014" y="119.90000000000006" width="253.46800000000005" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="162.73400000000004" y="135.05000000000007" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">grab_succeeded() == True (1 cubo menos en mesa)</text>
+</g>
+<g class="edge-label" data-from="PICKING" data-to="SCANNING" data-label="Después de push() o si falló el agarre (reintento)">
+  <rect x="488.1961666666667" y="264.8" width="238.618" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="607.5051666666667" y="279.95" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Después de push() o si falló el agarre (reintento)</text>
+</g>
+<g class="edge-label" data-from="DROPPING" data-to="SCANNING" data-label="Cubo soltado en contenedor + regreso a vista">
+  <rect x="311.788" y="297.1" width="229.70800000000006" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="426.64200000000005" y="312.25" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Cubo soltado en contenedor + regreso a vista</text>
+</g>
+<g class="edge-label" data-from="BLOCKED" data-to="SCANNING" data-label="Zona despejada (auto-chequeo de cámara o botón web)">
+  <rect x="1096.8044619047619" y="402.30000000000007" width="274.258" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="1233.9334619047618" y="417.45000000000005" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Zona despejada (auto-chequeo de cámara o botón web)</text>
+</g>
+<g class="edge-label" data-from="SCANNING" data-to="STOP" data-label="Cancelar / Error de cámara o Maestro">
+  <rect x="450.32846190476204" y="429.4000000000001" width="195.85000000000005" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="548.253461904762" y="444.55000000000007" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Cancelar / Error de cámara o Maestro</text>
+</g>
+<g class="edge-label" data-from="PICKING" data-to="STOP" data-label="Cancelar / Error">
+  <rect x="212.32400000000007" y="273.1000000000001" width="95.46400000000003" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="260.0560000000001" y="288.25000000000006" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Cancelar / Error</text>
+</g>
+<g class="edge-label" data-from="DROPPING" data-to="STOP" data-label="Cancelar / Error">
+  <rect x="66.57016666666664" y="385.1000000000001" width="95.46400000000003" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="114.30216666666665" y="400.25000000000006" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Cancelar / Error</text>
+</g>
+<g class="node" data-id="_start" data-label="" data-shape="state-start">
+  <circle cx="200.0341666666668" cy="360.4000000000001" r="12" fill="var(--_text)" stroke="none" />
+</g>
+<g class="node" data-id="STOP" data-label="STOP" data-shape="rounded">
+  <rect x="221.56500000000005" y="483.1500000000001" width="77.518" height="36.900000000000006" rx="6" ry="6" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="260.32400000000007" y="501.6000000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">STOP</text>
+</g>
+<g class="node" data-id="SCANNING" data-label="SCANNING" data-shape="rounded">
+  <rect x="903.6263380952382" y="346.40000000000003" width="107.158" height="36.900000000000006" rx="6" ry="6" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="957.2053380952382" y="364.85" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">SCANNING</text>
+</g>
+<g class="node" data-id="FREE" data-label="FREE" data-shape="rounded">
+  <rect x="1135.947792857143" y="40" width="77.518" height="36.900000000000006" rx="6" ry="6" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="1174.706792857143" y="58.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">FREE</text>
+</g>
+<g class="node" data-id="PICKING" data-label="PICKING" data-shape="rounded">
+  <rect x="278.6716238095239" y="40.00000000000006" width="92.338" height="36.900000000000006" rx="6" ry="6" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="324.8406238095239" y="58.45000000000006" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">PICKING</text>
+</g>
+<g class="node" data-id="BLOCKED" data-label="BLOCKED" data-shape="rounded">
+  <rect x="1122.5026666666668" y="483.1500000000001" width="104.194" height="36.900000000000006" rx="6" ry="6" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="1174.5996666666667" y="501.6000000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">BLOCKED</text>
+</g>
+<g class="node" data-id="RECEIVING" data-label="RECEIVING" data-shape="rounded">
+  <rect x="1014.8161666666667" y="193.2" width="110.122" height="36.900000000000006" rx="6" ry="6" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="1069.8771666666667" y="211.64999999999998" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">RECEIVING</text>
+</g>
+<g class="node" data-id="DROPPING" data-label="DROPPING" data-shape="rounded">
+  <rect x="109.42100000000005" y="193.20000000000005" width="107.158" height="36.900000000000006" rx="6" ry="6" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="163.00000000000006" y="211.65000000000003" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">DROPPING</text>
+</g>
+</svg>
