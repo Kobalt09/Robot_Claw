@@ -104,8 +104,10 @@ def drop(cfg, m, container):
     go_up(cfg, m)
 
 
-def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None):
-    """El ciclo completo. stop: threading.Event para cancelar; status(texto): estado actual."""
+def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, approve=None):
+    """El ciclo completo. stop: threading.Event para cancelar; status(texto): estado actual.
+    approve(texto): si se da, se llama antes de cada acción y bloquea hasta que el usuario la
+    apruebe (modo paso a paso); si mientras tanto se cancela, el ciclo termina."""
     s = cfg["sort"]
     gcfg = GraspCfg(**cfg["grasp"])
     stop = stop or threading.Event()
@@ -141,6 +143,8 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None):
                     f"({plan.cube.x:.1f}, {plan.cube.y:.1f}) {gcfg.push:.1f} cm hacia ({dx:+.2f}, {dy:+.2f}).")
                 if not run:
                     log("Modo prueba: no se mueve nada."); break
+                if approve:
+                    say(f"ESPERANDO TU APROBACION: {dec.message}"); approve(); check()
                 say(f"Ciclo {cycle}: empujando un grupo")
                 push(m, cfg, plan.start, plan.end, degrees(atan2(dy, dx)))
                 pushes += 1
@@ -151,6 +155,8 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None):
                 f"cierro a {grasp_dir % 180:.0f}° -> {container}")
             if not run:
                 log("Modo prueba: no se mueve nada."); break
+            if approve:
+                say(f"ESPERANDO TU APROBACION: {dec.message}"); approve(); check()
             say(f"Ciclo {cycle}: agarrando cubo {c.color} en ({c.x:.1f}, {c.y:.1f})")
             try:
                 pick(cfg, m, c, grasp_dir, check)

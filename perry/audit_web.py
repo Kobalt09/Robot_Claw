@@ -43,6 +43,8 @@ font-family:monospace;font-size:12px;white-space:pre-wrap}.row{display:flex;gap:
 <div><button class="go" onclick="start('run')">&#9654; Iniciar</button>
 <button class="go" onclick="start('amarillo')">&#9654; Iniciar (todo al amarillo)</button>
 <button class="alt" onclick="start('look')">&#128065; Solo mirar</button>
+<button class="alt" onclick="start('step')">&#128099; Paso a paso</button>
+<button id="go" class="go" style="display:none;background:#f9a825;color:#000" onclick="fetch('/go',{method:'POST'})">&#10004; Ejecutar este paso</button>
 <button class="stop" onclick="fetch('/stop',{method:'POST'})">&#9209; Cancelar</button></div>
 <div id="st">...</div>
 <div class="tabs"><button id="t1" class="on" onclick="tab('seg')">Seguimiento</button>
@@ -72,7 +74,7 @@ setInterval(()=>{const q='?t='+Date.now();
  if(t=='seg'){document.getElementById('live').src='/live.jpg'+q;document.getElementById('plan').src='/plan.jpg'+q}
  else if(pts.length==0)raw.src='/raw.jpg'+q;
  fetch('/status').then(r=>r.json()).then(s=>{document.getElementById('st').textContent=
- (s.running?'EN MARCHA: ':'Detenido: ')+s.status;const l=document.getElementById('log');
+ (s.running?'EN MARCHA: ':'Detenido: ')+s.status;document.getElementById('go').style.display=s.waiting?'inline-block':'none';const l=document.getElementById('log');
  const atEnd=l.scrollTop+l.clientHeight>=l.scrollHeight-5;l.textContent=s.log.join('\\n');if(atEnd)l.scrollTop=l.scrollHeight})},700);
 </script></body></html>"""
 
@@ -85,6 +87,8 @@ class S:
     status = "listo"
     running = False
     stop = threading.Event()
+    go = threading.Event()
+    waiting = False
     cfg = None
     cam = None
 
@@ -112,6 +116,16 @@ def camera_loop():
             S.status = f"cámara: {e}"; time.sleep(2)
 
 
+def wait_approval():
+    """Modo paso a paso: espera el botón 'Ejecutar este paso' (o Cancelar)."""
+    S.go.clear(); S.waiting = True
+    try:
+        while not S.go.is_set() and not S.stop.is_set():
+            time.sleep(0.1)
+    finally:
+        S.waiting = False
+
+
 def run_cycle(mode):
     S.running, S.status = True, "arrancando"
     S.stop.clear()
@@ -122,7 +136,8 @@ def run_cycle(mode):
                   image_sink=lambda name, img: name.startswith("plan") and setattr(S, "plan", jpg(img)))
         m = open_arm(cfg)
         sort_loop(cfg, m, S.cam, log, run=(mode != "look"), to=("amarillo" if mode == "amarillo" else None),
-                  stop=S.stop, status=lambda t: setattr(S, "status", t))
+                  stop=S.stop, status=lambda t: setattr(S, "status", t),
+                  approve=wait_approval if mode == "step" else None)
     except Exception as e:
         S.log.append(f"[ERROR] {e}"); S.status = f"error: {e}"
     finally:
@@ -146,7 +161,7 @@ class Handler(BaseHTTPRequestHandler):
                     data = getattr(S, name)
                 return self.send(data or b"", "image/jpeg", 200 if data else 503)
         if self.path.startswith("/status"):
-            return self.send(json.dumps({"running": S.running, "status": S.status, "log": list(S.log)}).encode(),
+            return self.send(json.dumps({"running": S.running, "status": S.status, "waiting": S.waiting, "log": list(S.log)}).encode(),
                              "application/json")
         self.send(PAGE.encode("utf-8"))
 
@@ -158,6 +173,9 @@ class Handler(BaseHTTPRequestHandler):
             if S.cam is None:
                 return self.send("La cámara todavía no está lista.".encode())
             threading.Thread(target=run_cycle, args=(body,), daemon=True).start()
+            return self.send(b"")
+        if self.path == "/go":
+            S.go.set()
             return self.send(b"")
         if self.path == "/stop":
             S.stop.set(); S.status = "cancelando: termina el movimiento y estaciona"
