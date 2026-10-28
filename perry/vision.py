@@ -119,6 +119,7 @@ class TopCamera:
     def find_cubes(self, frame=None):
         """Cubos dentro de la zona, el más grande primero. Devuelve (cubos, imagen anotada)."""
         f = self.frame() if frame is None else frame
+        self.last_frame = f   # imagen limpia, para la interfaz de auditoría
         z = self.cfg["zone"]
         cubes = []
         detections = self.det.procesar_frame(f)

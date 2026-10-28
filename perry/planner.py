@@ -22,6 +22,13 @@ def in_zone(cfg, p):
     return z["x_min"] <= p.x <= z["x_max"] and abs(p.y) <= z["y_abs"]
 
 
+def direction_words(dx, dy):
+    """Dirección en palabras, vista desde detrás del brazo mirando la zona (X lejos, Y izquierda)."""
+    side = "hacia la izquierda" if dy > 0.38 else "hacia la derecha" if dy < -0.38 else ""
+    depth = "alejándose de la base" if dx > 0.38 else "hacia la base" if dx < -0.38 else ""
+    return " y ".join(w for w in (side, depth) if w)
+
+
 @dataclass
 class Decision:
     kind: str                       # "grab", "push" o "none"
@@ -48,14 +55,17 @@ def decide(cfg, cubes, ignored=(), to=None):
     choice = choose_grasp(cubes, g, can_try)
     if choice:
         c, d = choice
+        box = to or cfg["containers"].get(c.color)
         return Decision("grab", c, d, unreachable=unreachable,
-                        message=f"Agarrar {c.color} en ({c.x:.1f}, {c.y:.1f}) cerrando a {d % 180:.0f}°")
+                        message=f"AGARRAR el cubo {c.color} en ({c.x:.1f}, {c.y:.1f}) y llevarlo a la caja {box}")
     margin = cfg["reach"]["max_r"] - s["push_margin_r"]
     ok = lambda p: reachable(cfg, p) and in_zone(cfg, p) and hypot(p.x, p.y) <= margin  # noqa: E731
     plan = plan_push(cubes, g, can_try, point_ok=ok)
     if plan is None:
         return Decision("none", unreachable=unreachable,
                         message="Hay cubos, pero ninguno se puede agarrar ni separar empujando.")
+    moved = sum(1 for a, b in zip(cubes, plan.predicted) if (a.x, a.y) != (b.x, b.y))
     return Decision("push", plan.cube, plan=plan, unreachable=unreachable,
-                    message=f"Empujar ({plan.cube.x:.1f}, {plan.cube.y:.1f}) {g.push:.1f} cm "
-                            f"hacia ({plan.direction[0]:+.2f}, {plan.direction[1]:+.2f})")
+                    message=f"EMPUJAR el cubo {plan.cube.color} en ({plan.cube.x:.1f}, {plan.cube.y:.1f}) "
+                            f"{direction_words(*plan.direction)}, {g.push:.1f} cm"
+                            + (f" (arrastra {moved} cubos)" if moved > 1 else ""))
