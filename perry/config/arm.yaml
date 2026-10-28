@@ -40,7 +40,7 @@ gripper: {channel: 10, open: 750, closed: 1700, min: 500, max: 2500}
 
 # Cámara cenital. Si la mueven: py calibrate_camera.py (vuelve a marcar las 4 esquinas).
 camera:
-  index: 0                 # en la PC de Ignacio cambia entre 0 y 1 según qué se conecte primero
+  index: 1                 # en la PC de Ignacio cambia entre 0 y 1 según qué se conecte primero
   warmup_s: 2.0            # espera para que ajuste la exposición
   # Homografía: 4 esquinas del rectángulo de la hoja milimetrada (en este orden: lejana izq.,
   # lejana der., cercana der., cercana izq.) en píxeles y en cm (X hacia la zona, Y a la izquierda).
@@ -88,6 +88,7 @@ reach:
   approach_shoulder_us: 100   # para acercarse: el hombro va hacia atrás esto (la punta sube unos cm)
   grip_shoulder_offset_us: -30  # 27-10: con el resorte nuevo el brazo queda más alto; se baja el hombro esto al agarrar
   rows:
+    - {r: 11.91, hombro: 1335, codo: 1604, muneca: 2151}   # cubo real en (11,9; 0,4), agarrado (28-10); pinza levemente inclinada
     - {r: 13.19, hombro: 1323, codo: 1573, muneca: 2097}   # cubo real en (13,1; 1,5), verificado a ojo (27-10)
     - {r: 13.83, hombro: 1321, codo: 1568, muneca: 2088}   # esquinas cercanas
     - {r: 15.35, hombro: 1302, codo: 1521, muneca: 2006}   # centro del rectángulo
