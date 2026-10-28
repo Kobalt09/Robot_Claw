@@ -37,6 +37,7 @@ class GraspCfg:
     eps: float = 0.05    # tolerancia: tocarse no es chocar
     w_giro: float = 0.3  # penalización por girar mucho la pinza
     w_r: float = 0.02    # penalización por distancia al eje
+    push_dir_step: float = 0.0   # además de las 4 caras, probar empujes cada estos grados (0 = solo caras)
 
 
 @dataclass
@@ -129,6 +130,15 @@ def choose_grasp(cubes, g, reachable):
     return best
 
 
+def push_dirs(c, g):
+    """Direcciones (grados) en que se prueba empujar un cubo: sus 4 caras y, si push_dir_step > 0,
+    cualquier ángulo cada push_dir_step (el cubo se desliza y gira algo; después se vuelve a mirar)."""
+    dirs = [c.angle + 90.0 * k for k in range(4)]
+    if g.push_dir_step > 0:
+        dirs += [k * g.push_dir_step for k in range(int(round(360 / g.push_dir_step)))]
+    return dirs
+
+
 def _slide(cubes, first, n, g):
     """Cubos que se mueven si se empuja `first` en la dirección n (los que están en línea)."""
     moved, frontier = {id(first)}, [first]
@@ -157,10 +167,10 @@ def plan_push(cubes, g, reachable, point_ok=None):
     for c in cubes:
         if not reachable(c):
             continue
-        for k in range(4):
-            a = c.angle + 90.0 * k
+        for a in push_dirs(c, g):
             n = (cos(radians(a)), sin(radians(a)))
-            back = g.cube / 2 + half + g.error
+            t = radians(a - c.angle)    # distancia del centro al borde del cubo en esa dirección
+            back = g.cube / 2 * (abs(cos(t)) + abs(sin(t))) + half + g.error
             start = (c.x - n[0] * back, c.y - n[1] * back)
             pusher = _rect(start[0], start[1], a, half + g.error, g.finger_width / 2 + g.error)
             if any(_overlap(pusher, _square(o, g), g.eps) for o in cubes):

@@ -67,6 +67,7 @@ grasp:
                        # entera (con 3,0 los cubos se arrastraban entre sí y el 2x2 quedaba escalonado)
   w_giro: 0.3
   w_r: 0.02
+  push_dir_step: 30   # empujar también en cualquier dirección (cada 30°), no solo perpendicular a las caras
 push_lift_us: 20       # al empujar, la pinza va este tanto (hombro) más alta que al agarrar
 push_step_cm: 0.5      # el empuje avanza de a estos cm
 

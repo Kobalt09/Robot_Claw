@@ -152,5 +152,20 @@ def test_push_uses_point_ok_for_pusher_positions():
     assert plan_push(block_2x2(), G, only_colored, point_ok=ALWAYS) is not None
 
 
+def test_push_directions_include_any_angle_when_enabled():
+    from dataclasses import replace
+    from grasp import push_dirs
+    c = Cube("azul", 15, 0, 10.0)
+    assert sorted(d % 360 for d in push_dirs(c, G)) == [10.0, 100.0, 190.0, 280.0]   # solo caras
+    dirs = [d % 360 for d in push_dirs(c, replace(G, push_dir_step=30.0))]
+    assert 45.0 not in dirs and 30.0 in dirs and 60.0 in dirs and len(dirs) == 4 + 12
+
+
+def test_any_direction_push_still_solves_2x2():
+    from dataclasses import replace
+    plan = plan_push(block_2x2(), replace(G, push_dir_step=30.0), ALWAYS)
+    assert plan is not None and choose_grasp(plan.predicted, G, ALWAYS) is not None
+
+
 def test_no_push_needed_when_something_is_graspable():
     assert plan_push(row_x(3), G, ALWAYS) is None
