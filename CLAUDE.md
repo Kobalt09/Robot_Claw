@@ -98,6 +98,17 @@ Hecho: medidas reales; `perry/` escrito; **primera sesión con el brazo real (14
 - Probado: cubos girados, cubo fuera de alcance (lo ignora), agarre fallido (lo detecta y reintenta).
 - Pendiente: enseñar con cubo real las filas de ~13,8 y ~20 cm (a 14 cm del lado izquierdo el primer agarre a veces falla); contenedor verde y qué hacer con el cubo rojo; precisión del giro en cubos muy girados; probar en la Raspberry.
 
+**Sesión del 28-10-2026: panel web y grupos de cubos** (estado para quien continúe)
+
+- **Cómo se opera:** `cd perry; $env:PERRY_PORT="COM5"; py audit_web.py` → http://localhost:8000. Botones Iniciar / Paso a paso / Solo mirar / Cancelar, cámara en vivo, decisión dibujada y registro. Calibrar la cámara desde la pestaña del panel. Fotos y registro de cada corrida en `perry/logs/`.
+- **Al encender:** los servos arrancan en 0 µs. Acomodar el brazo a mano (arriba y girado a la derecha) y energizar de a uno: `py servo_cmd.py set 2 1450`, `set 4 1300`, `set 6 2000`, `set 0 2100`, `set 8 1447`, `set 10 750`.
+- **Cámara cenital: índice 1** (cambia al reconectar; si sale negra o es la de la notebook, cambiar `camera.index`). Cajas: amarilla a la izquierda, verde a la derecha. Azules → caja amarilla, amarillos → caja verde.
+- `grasp.py` (con tests: `py -m pytest perry/tests`) decide agarrar por un eje libre o empujar en cualquier dirección; `vision.py` separa cubos pegados (área + k-means) y corrige la paralaje (cámara a 70 cm). Fila de alcance nueva a 11,9 cm.
+- **Probado y descartado:** arrastrar un cubo apoyando la pinza desde arriba (patina o fuerza el hombro). Los racimos apretados no tienen solución práctica: **decisión: los rastrillos deben dejar los cubos separados** (una fila, ~1,5 cm entre cubos, entre 12 y 19,5 cm del eje).
+- **Dato:** la pinza cierra del todo recién en ~2350 µs (1700 deja ~1,5 cm entre puntas).
+- **Siguiente:** estado "ZONA BLOQUEADA" + aviso MQTT a Phineas y Ferb; documento de requisitos para los equipos de los rastrillos; checklist de fallas; probar en la Raspberry.
+- **DroidCam:** no conecta si el teléfono tiene una VPN activa.
+
 Siguiente (plan original, ya superado en parte):
 
 1. **Recalibrar hombro, codo y muñeca con posturas enseñadas**: llevar la pinza con comandos a T1, T2 y T3 (vertical, a 1 cm, sobre la marca). La cinemática da el ángulo exacto de cada articulación en esa postura, y así cada postura aporta un par [ángulo, pulso]. Ajustar la recta con los tres puntos. Para ver bien conviene una cámara realmente de perfil (por ejemplo, el teléfono como webcam) y un fondo cuadriculado detrás del brazo. Faltan también el giro (0°/90°) y la pinza (abierta/cerrada).
