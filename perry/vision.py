@@ -91,7 +91,16 @@ class TopCamera:
         self.det.rangos_colores.clear()
         for name, ranges in c["colors"].items():
             self.det.configurar_color(name, [(np.array(lo, np.uint8), np.array(hi, np.uint8)) for lo, hi in ranges])
-        self.cam = CapturaCamara(indice_camara=c["index"])
+        idx = c.get("index", 1)
+        try:
+            self.cam = CapturaCamara(indice_camara=idx)
+        except RuntimeError as e:
+            alt_idx = 0 if idx == 1 else 1
+            try:
+                self.cam = CapturaCamara(indice_camara=alt_idx)
+                c["index"] = alt_idx
+            except RuntimeError:
+                raise RuntimeError(f"No se pudo abrir la cámara en el índice {idx} ni en {alt_idx}: {e}")
         time.sleep(c["warmup_s"])
         # punto de la mesa justo debajo de la cámara: el de arm.yaml, o el centro de la imagen
         if c.get("nadir_cm"):

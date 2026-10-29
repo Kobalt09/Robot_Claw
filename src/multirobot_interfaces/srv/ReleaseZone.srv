@@ -1,0 +1,6 @@
+string robot
+bool delivered
+string color
+---
+bool ok
+uint32 count

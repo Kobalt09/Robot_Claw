@@ -1,0 +1,19 @@
+services:
+  perry:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        BASE_IMAGE: ros:jazzy-ros-base
+    container_name: perry_claw
+    network_mode: host
+    privileged: true
+    volumes:
+      - .:/ws
+      - /dev:/dev
+    environment:
+      - PERRY_PORT=/dev/ttyACM0
+      - ROS_DOMAIN_ID=0
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    command: ["/entrypoint.sh"]

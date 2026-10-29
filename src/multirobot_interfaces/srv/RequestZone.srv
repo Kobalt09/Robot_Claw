@@ -1,0 +1,5 @@
+string robot
+---
+bool granted
+string holder
+float32 remaining_s

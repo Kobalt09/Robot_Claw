@@ -110,5 +110,13 @@ poses:
   amarillo: {base: 865,  hombro: 1244, codo: 737,  muneca: 2496, giro: 2059}   # caja izquierda
   verde:    {base: 2079, hombro: 1244, codo: 737,  muneca: 2496, giro: 952}    # caja derecha
 
+# Tolerancia y estabilización para verificar posición de reposo (Fase 1: reach.py)
+park_tolerance_us: 30     # margen aceptable (±us) en travel y base para declarar reposo
+park_settle_s: 0.5        # espera tras moverse a vista para evitar vibración
+
 # A qué contenedor va cada color.
 containers: {azul: amarillo, amarillo: verde}   # 27-10: cubos azules -> caja amarilla, amarillos -> caja verde
+
+# Control y automatización de flota (Fase 5)
+auto_sort_on_release: true     # inicia ciclo automáticamente cuando un carro llama /zone/release
+blocked_check_interval_s: 3.0  # tiempo (segundos) entre chequeos automáticos de zona bloqueada

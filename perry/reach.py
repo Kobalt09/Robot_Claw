@@ -12,6 +12,7 @@ La base tiene juego mecánico (~7°): siempre se llega a su pulso desde abajo,
 pasando antes por pulso - backlash_us.
 """
 from math import atan2, degrees, hypot
+import time
 
 from kinematics import angle_to_us
 
@@ -132,3 +133,83 @@ def set_base(m, cfg, us):
     m.wait()
     m.set_us(ch, us)
     m.wait()
+
+
+def is_energized(m, cfg):
+    """Comprueba que todos los canales en arm.yaml (articulaciones y pinza) tengan pulsos (> 0 us).
+
+    Devuelve False si algún servo lee 0 us (desenergizado tras encendido) o si la lectura falla.
+    """
+    try:
+        channels = [j["channel"] for j in cfg.get("joints", {}).values()]
+        if "gripper" in cfg and "channel" in cfg["gripper"]:
+            channels.append(cfg["gripper"]["channel"])
+        if not channels:
+            return False
+        for ch in channels:
+            us = m.get_us(ch)
+            if us is None or us <= 0:
+                return False
+        return True
+    except Exception:
+        return False
+
+
+def is_parked(m, cfg, tol_us=None):
+    """Comprueba que el brazo esté energizado, quieto y en la pose de reposo ('vista').
+
+    Requisitos:
+    1. is_energized(m, cfg) es True.
+    2. not m.is_moving().
+    3. Pulsos actuales de hombro, codo y muñeca coinciden con cfg['travel'] dentro de ±tol_us.
+    4. Pulso actual de base coincide con cfg['poses']['vista']['base'] dentro de ±tol_us.
+    """
+    if tol_us is None:
+        tol_us = cfg.get("park_tolerance_us", 30)
+
+    try:
+        if not is_energized(m, cfg):
+            return False
+        if m.is_moving():
+            return False
+
+        for j in ARM:
+            ch = cfg["joints"][j]["channel"]
+            target = cfg["travel"][j]
+            current = m.get_us(ch)
+            if abs(current - target) > tol_us:
+                return False
+
+        base_ch = cfg["joints"]["base"]["channel"]
+        base_target = cfg["poses"]["vista"]["base"]
+        base_current = m.get_us(base_ch)
+        if abs(base_current - base_target) > tol_us:
+            return False
+
+        return True
+    except Exception:
+        return False
+
+
+def ensure_parked(m, cfg):
+    """Garantiza que el brazo esté en la pose de reposo ('vista').
+
+    - Si is_energized() es False: no mueve nada (evita tirones bruscos) y devuelve False.
+    - Si ya está estacionado (is_parked() == True): devuelve True sin mover nada.
+    - Si está energizado pero fuera de lugar: ejecuta move_via_top a 'vista'
+      (precise_base=False), espera estabilización y retorna is_parked().
+    """
+    if not is_energized(m, cfg):
+        return False
+
+    if is_parked(m, cfg):
+        return True
+
+    try:
+        move_via_top(m, cfg, cfg["poses"]["vista"], precise_base=False)
+        settle_s = cfg.get("park_settle_s", 0.0)
+        if settle_s > 0:
+            time.sleep(settle_s)
+        return is_parked(m, cfg)
+    except Exception:
+        return False
