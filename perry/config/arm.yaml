@@ -113,7 +113,8 @@ travel: {hombro: 1450, codo: 1300, muneca: 2000}
 # Posiciones fijas: pulso por canal (base, hombro, codo, muneca, giro). Cajas del Control Center.
 poses:
   vista:    {base: 2100}   # brazo arriba y girado a la derecha: no tapa la zona a la cámara cenital
-  vista_izq: {base: 900}   # igual, girado a la IZQUIERDA (sobre la caja amarilla): se usa la más cercana
+  # vista_izq: {base: 900}  # DESACTIVADA 31-10: la pinza quedaba casi a la altura del borde de la caja
+  #                         # amarilla y al girar hacia la zona la chocó. Falta una pose más alta.
   inicio:   {base: 1479, hombro: 1400, codo: 1521, muneca: 2006, giro: 1447}
   amarillo: {base: 865,  hombro: 1244, codo: 737,  muneca: 2496, giro: 2059}   # caja izquierda
   verde:    {base: 2079, hombro: 1244, codo: 737,  muneca: 2496, giro: 952}    # caja derecha
