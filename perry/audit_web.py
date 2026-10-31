@@ -44,6 +44,7 @@ font-family:monospace;font-size:12px;white-space:pre-wrap}.row{display:flex;gap:
 <button class="go" onclick="start('amarillo')">&#9654; Iniciar (todo al amarillo)</button>
 <button class="alt" onclick="start('look')">&#128065; Solo mirar</button>
 <button class="alt" onclick="start('step')">&#128099; Paso a paso</button>
+<button class="alt" onclick="if(confirm('Prueba de precisión: dejá UN solo cubo en la zona. ¿Empezar?'))start('precision')">&#127919; Prueba de precisión</button>
 <button id="go" class="go" style="display:none;background:#f9a825;color:#000" onclick="fetch('/go',{method:'POST'})">&#10004; Ejecutar este paso</button>
 <button class="stop" onclick="fetch('/stop',{method:'POST'})">&#9209; Cancelar</button></div>
 <div id="st">...</div>
@@ -133,8 +134,12 @@ def run_cycle(mode):
     try:
         cfg = S.cfg
         log = Log(cfg, sink=S.log.append,
-                  image_sink=lambda name, img: name.startswith("plan") and setattr(S, "plan", jpg(img)))
+                  image_sink=lambda name, img: name.startswith(("plan", "precision")) and setattr(S, "plan", jpg(img)))
         m = open_arm(cfg)
+        if mode == "precision":
+            from precision import precision_run
+            precision_run(cfg, m, S.cam, log, stop=S.stop, status=lambda t: setattr(S, "status", t))
+            return
         sort_loop(cfg, m, S.cam, log, run=(mode != "look"), to=("amarillo" if mode == "amarillo" else None),
                   stop=S.stop, status=lambda t: setattr(S, "status", t),
                   approve=wait_approval if mode == "step" else None)
