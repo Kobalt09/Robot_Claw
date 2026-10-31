@@ -84,9 +84,17 @@ def go_up(cfg, m):
         m.set_us(cfg["joints"][j]["channel"], us); m.wait()
 
 
+def park_pose(cfg, m):
+    """La pose de estacionamiento (vista o vista_izq) más cercana a donde está la base: después de
+    soltar en la caja izquierda no cruza toda la mesa para mirar."""
+    here = m.get_us(cfg["joints"]["base"]["channel"])
+    poses = [cfg["poses"][k] for k in ("vista", "vista_izq") if k in cfg["poses"]]
+    return min(poses, key=lambda p: abs(p["base"] - here))
+
+
 def look(cfg, m, cam, log, tag):
     """Estaciona el brazo fuera de la vista y devuelve los cubos de la zona (y la imagen)."""
-    move_via_top(m, cfg, cfg["poses"]["vista"], precise_base=False)
+    move_via_top(m, cfg, park_pose(cfg, m), precise_base=False)
     time.sleep(0.5)  # que se quede quieto antes de la foto
     cubes, img = cam.find_cubes()
     log.image(tag, img)
@@ -125,7 +133,7 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, appro
         if stop.is_set():
             raise Cancelled()
 
-    ignored, tries, done, pushes = [], {}, 0, 0
+    ignored, tries, done, pushes, fails_in_a_row = [], {}, 0, 0, 0
     try:
         for cycle in range(1, s["max_cycles"] + 1):
             check()
@@ -197,8 +205,14 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, appro
                     f"{sum(d.color == c.color for d in after)} cubo(s) {c.color}{where}.")
                 if tries[key] > s["retries"]:
                     log("Lo doy por perdido."); ignored.append((c.x, c.y))
+                fails_in_a_row += 1
+                if fails_in_a_row >= s["max_fails_in_a_row"]:
+                    log(f"{fails_in_a_row} agarres fallados SEGUIDOS: POSIBLE DESAJUSTE (un golpe puede correr un "
+                        "engranaje, o se movió la cámara o una caja). Me detengo: correr la Prueba de precisión.")
+                    break
                 continue
             done += 1
+            fails_in_a_row = 0
             pushes = 0   # el límite de empujes es por atasco: si se agarró algo, la situación cambió
             log(f"Cubo {c.color} soltado en {container}. Llevo {done}.")
     except Cancelled:
