@@ -36,7 +36,8 @@ joints:
 
 # pinza: 750 abierta. 1700 = cierre firme (27-10: con 1500/1600 el agarre quedaba al límite y a
 # veces el cubo se escurría; con 1700 lo sostiene sin zumbido continuo).
-gripper: {channel: 10, open: 750, closed: 1700, min: 500, max: 2500}
+# push_closed: para EMPUJAR, puntas juntas (~2 mm entre ellas, medido 28-10 sin zumbido)
+gripper: {channel: 10, open: 750, closed: 1700, push_closed: 2350, min: 500, max: 2500}
 
 # Cámara cenital. Si la mueven: py calibrate_camera.py (vuelve a marcar las 4 esquinas).
 camera:

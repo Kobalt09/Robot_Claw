@@ -91,7 +91,8 @@ def push(m, cfg, start, end, direction):
     g = cfg["gripper"]
     ch = {j: cfg["joints"][j]["channel"] for j in cfg["joints"]}
     lift = cfg["push_lift_us"]
-    m.set_us(g["channel"], g["closed"]); m.wait()
+    # cerrada DEL TODO: con "closed" (1700) las puntas quedan a ~1,5 cm y el dedo de adelante cae sobre el cubo
+    m.set_us(g["channel"], g.get("push_closed", g["closed"])); m.wait()
     high = pulses_at(cfg, *start, level="approach", grasp_dir=direction)
     move_via_top(m, cfg, high)
     low = pulses_at(cfg, *start, level="grip", grasp_dir=direction)
