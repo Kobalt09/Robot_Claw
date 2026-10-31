@@ -48,11 +48,11 @@ def test_node_request_and_release_callbacks():
     granted, holder, remaining = arbiter.request_zone(req.robot)
     res.granted = granted
     res.holder = holder
-    res.remaining_s = remaining
+    res.lease_seconds = remaining
 
     assert res.granted is True
     assert res.holder == "ferb"
-    assert res.remaining_s == 60.0
+    assert res.lease_seconds == 60.0
     assert arbiter.state == PerryState.RECEIVING
 
     # Callback de release_zone
@@ -64,10 +64,10 @@ def test_node_request_and_release_callbacks():
 
     ok, total = arbiter.release_zone(rel_req.robot, delivered=rel_req.delivered, color=rel_req.color)
     rel_res.ok = ok
-    rel_res.count = total
+    rel_res.delivered_total = total
 
     assert rel_res.ok is True
-    assert rel_res.count == 1
+    assert rel_res.delivered_total == 1
     assert arbiter.state == PerryState.SCANNING
     assert arbiter.trigger_sort is True
 

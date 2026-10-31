@@ -49,11 +49,12 @@ Perry publica este mensaje cada **0.5 segundos (2 Hz)**. Cumple dos funciones cr
 
 Definición del mensaje `RobotState.msg`:
 ```text
-string robot        # Siempre "perry"
-string state        # Estado actual de la máquina de estados de Perry (ver tabla abajo)
-bool carrying       # true si la pinza verificó que lleva un cubo en el aire hacia la caja
-uint32 delivered    # Total acumulado de cubos clasificados con éxito por Perry en sus contenedores
-bool gate_closed    # true cuando state == "BLOCKED" (hay cubos atascados/inalcanzables en la zona)
+builtin_interfaces/Time stamp # Marca de tiempo oficial de publicación
+string robot                  # Siempre "perry"
+string state                  # Estado actual de la máquina de estados de Perry (ver tabla abajo)
+bool carrying                 # true si la pinza verificó que lleva un cubo en el aire hacia la caja
+uint32 delivered              # Total acumulado de cubos clasificados con éxito por Perry en sus contenedores
+bool gate_closed              # true cuando state == "BLOCKED" (hay cubos atascados/inalcanzables en la zona)
 ```
 
 #### Tabla de Estados que envía Perry en `/perry/state`
@@ -82,7 +83,7 @@ string robot          # "ferb" o "phineas"
 ---
 bool granted          # true = tiene permiso para entrar | false = permiso denegado, esperar afuera
 string holder         # Quién tiene actualmente la zona ("ferb", "phineas" o "perry")
-float32 remaining_s   # Segundos restantes del lease actual (60.0 s al concederse o renovarse)
+float32 lease_seconds # Segundos de duración del lease otorgado/restante (60.0 s al concederse o renovarse)
 ```
 
 **Reglas del servidor en Perry:**
@@ -103,12 +104,12 @@ bool delivered        # true si dejó al menos un cubo en la zona; false si abor
 string color          # Color reportado por el carro (ej. "blue", "yellow", "azul", "amarillo" o "")
 ---
 bool ok               # true si la liberación fue aceptada; false si el carro no tenía el lease
-uint32 count          # Total acumulado de entregas reportadas por los carros a Perry
+uint32 delivered_total # Total acumulado de entregas reportadas por los carros a Perry
 ```
 
 **¿Qué hace Perry al recibir `/zone/release`?**
 1. Verifica que `robot` sea el dueño actual del lease.
-2. Si `delivered == true`, incrementa el contador de entregas recibidas (`count`).
+2. Si `delivered == true`, incrementa el contador de entregas recibidas (`delivered_total`).
 3. Limpia el `holder` e **inmediatamente cambia su estado a `SCANNING` (`occupant = "perry"`)**, disparando de forma automática el ciclo de visión y clasificación de la garra (`sort_loop`).
 4. *Nota sobre múltiples cubos:* Aunque `delivered` es un booleano, la cámara cenital de Perry detecta todos los cubos presentes en la zona y la garra los recogerá **uno por uno** hasta vaciar la zona antes de volver a `FREE`.
 
@@ -133,24 +134,24 @@ sequenceDiagram
 
     Note over P: Estado: FREE<br/>/zone/occupant: ""
     F->>P: /zone/request {robot: "ferb"}
-    P-->>F: {granted: true, holder: "ferb", remaining_s: 60.0}
+    P-->>F: {granted: true, holder: "ferb", lease_seconds: 60.0}
     Note over P: Estado: RECEIVING<br/>/zone/occupant: "ferb"
 
     Ph->>P: /zone/request {robot: "phineas"}
-    P-->>Ph: {granted: false, holder: "ferb", remaining_s: 54.2}
+    P-->>Ph: {granted: false, holder: "ferb", lease_seconds: 54.2}
     Note over Ph: Espera fuera de la zona (> 30 cm)
 
     Note over F: Entra a la zona, deja el cubo<br/>en la franja de 12.0 a 19.5 cm<br/>y retrocede fuera de la zona.
 
     F->>P: /zone/release {robot: "ferb", delivered: true, color: "blue"}
-    P-->>F: {ok: true, count: 1}
+    P-->>F: {ok: true, delivered_total: 1}
 
     Note over P: Estado: SCANNING -> PICKING -> DROPPING<br/>/zone/occupant: "perry"<br/>(Garra detecta, agarra y guarda el cubo)
 
     Note over P: Termina de vaciar la zona y estaciona en vista<br/>Estado: FREE<br/>/zone/occupant: ""
 
     Ph->>P: /zone/request {robot: "phineas"}
-    P-->>Ph: {granted: true, holder: "phineas", remaining_s: 60.0}
+    P-->>Ph: {granted: true, holder: "phineas", lease_seconds: 60.0}
 ```
 
 ---
@@ -177,6 +178,7 @@ Perry escucha los tópicos `/ferb/state` y `/phineas/state` (`multirobot_interfa
 
 Ejemplo de lo que publica cada carro:
 ```yaml
+stamp: {sec: 1730380000, nanosec: 0} # Marca de tiempo oficial
 robot: "ferb"          # o "phineas"
 state: "SEARCHING"     # ej. "IDLE", "SEARCHING", "APPROACHING", "WAITING_ZONE", "DELIVERING", "RETREATING"
 carrying: true         # true si el carro lleva un cubo en su rastrillo/compuerta

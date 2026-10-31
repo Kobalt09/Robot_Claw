@@ -119,6 +119,9 @@ if HAS_RCLPY:
             # Temporizador de tick para chequeo de leases (5 Hz)
             self._tick_timer = self.create_timer(0.2, self._tick_loop)
 
+            # Cache para evitar saturar el log con solicitudes repetidas en espera
+            self._last_request_log = {}
+
         def _publish_loop(self):
             # 1. Publicar /zone/occupant
             occ_msg = String()
@@ -128,6 +131,7 @@ if HAS_RCLPY:
             # 2. Publicar /perry/state si las interfaces están disponibles
             if HAS_INTERFACES:
                 st_msg = RobotState()
+                st_msg.stamp = self.get_clock().now().to_msg()
                 st_msg.robot = "perry"
                 st_msg.state = self.arbiter.state.value
                 st_msg.carrying = bool(self.arbiter.carrying)
@@ -143,8 +147,15 @@ if HAS_RCLPY:
             granted, holder, remaining_s = self.arbiter.request_zone(robot)
             response.granted = bool(granted)
             response.holder = str(holder)
-            response.remaining_s = float(remaining_s)
-            self.get_logger().info(f"/zone/request de '{robot}': granted={granted}, holder='{holder}'")
+            response.lease_seconds = float(remaining_s)
+
+            prev = self._last_request_log.get(robot)
+            curr = (granted, holder)
+            if curr != prev or granted:
+                self.get_logger().info(f"/zone/request de '{robot}': granted={granted}, holder='{holder}'")
+                self._last_request_log[robot] = curr
+            else:
+                self.get_logger().debug(f"/zone/request repetido de '{robot}': granted={granted}, holder='{holder}'")
             return response
 
         def _handle_release_zone(self, request, response):
@@ -152,7 +163,8 @@ if HAS_RCLPY:
             color = str(getattr(request, "color", "")).strip().lower()
             ok, count = self.arbiter.release_zone(robot, delivered=bool(request.delivered), color=color)
             response.ok = bool(ok)
-            response.count = int(count)
+            response.delivered_total = int(count)
+            self._last_request_log.pop(robot, None)
             self.get_logger().info(f"/zone/release de '{robot}' (delivered={request.delivered}): ok={ok}, total={count}")
             return response
 

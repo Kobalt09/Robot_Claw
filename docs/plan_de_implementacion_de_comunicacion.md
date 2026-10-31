@@ -111,9 +111,9 @@ stateDiagram-v2
 - **Qué se implementará en `perry/ros_node.py`:**
   1. Nodo `PerryFleetNode(Node)` corriendo en un `threading.Thread(daemon=True)`:
      - **Publicador `/zone/occupant`** (`std_msgs/msg/String`, `2 Hz`, `RELIABLE`, `TRANSIENT_LOCAL`, `depth=1`): publica `arbiter.occupant_msg`.
-     - **Publicador `/perry/state`** (`multirobot_interfaces/msg/RobotState`, `2 Hz`): publica `robot="perry"`, `state=arbiter.state.value`, `carrying=arbiter.carrying`, `delivered=arbiter.sorted_total`, `gate_closed=(arbiter.state == BLOCKED)`.
-     - **Servicio `/zone/request`** (`RequestZone`): llama a `arbiter.request_zone()`.
-     - **Servicio `/zone/release`** (`ReleaseZone`): llama a `arbiter.release_zone()`.
+     - **Publicador `/perry/state`** (`multirobot_interfaces/msg/RobotState`, `2 Hz`): publica `stamp=self.get_clock().now().to_msg()`, `robot="perry"`, `state=arbiter.state.value`, `carrying=arbiter.carrying`, `delivered=arbiter.sorted_total`, `gate_closed=(arbiter.state == BLOCKED)`.
+     - **Servicio `/zone/request`** (`RequestZone`): llama a `arbiter.request_zone()` y responde con `lease_seconds`.
+     - **Servicio `/zone/release`** (`ReleaseZone`): llama a `arbiter.release_zone()` y responde con `delivered_total`.
      - **Suscriptores `/ferb/state` y `/phineas/state`** (`RobotState`): guardan el último estado de ambos carros para mostrarlo en el panel web de Perry.
   2. Si `rclpy` no está instalado (ej. corriendo en Windows sin Docker), `start_ros_node()` continúa sin error en modo local.
 
