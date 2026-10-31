@@ -1,0 +1,706 @@
+<title>Perry · Coordenadas y ángulos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: hoja técnica. Columna de lectura + dos láminas (planta y alzado) que se recalculan con las medidas del grupo */
+:root{
+  --bg:#f3f5f4; --paper:#ffffff; --ink:#18242c; --muted:#5b6b73; --line:#c9d3d2; --grid:#e3e9e8;
+  --accent:#0d7480;      /* turquesa de la zona */
+  --arm:#2f4f86;         /* el brazo */
+  --angle:#b4531a;       /* ángulos y cotas */
+  --ok:#2c7a3f; --bad:#b42318;
+  --tape:#f3d36b; --cube-y:#e6b800; --cube-b:#3346c4; --zone:#1a8fa0; --zone-fill:rgba(26,143,160,.16);
+  --f-display:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11171b; --paper:#172027; --ink:#e3ebee; --muted:#9aabb3; --line:#2f3d45; --grid:#1f2a31;
+  --accent:#3cc3cf; --arm:#8fb0ec; --angle:#f0a060; --ok:#6fcf86; --bad:#ff8a7a;
+  --tape:#8a7428; --cube-y:#f2cf3a; --cube-b:#7d8cff; --zone:#38b6c6; --zone-fill:rgba(56,182,198,.16); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11171b; --paper:#172027; --ink:#e3ebee; --muted:#9aabb3; --line:#2f3d45; --grid:#1f2a31;
+  --accent:#3cc3cf; --arm:#8fb0ec; --angle:#f0a060; --ok:#6fcf86; --bad:#ff8a7a;
+  --tape:#8a7428; --cube-y:#f2cf3a; --cube-b:#7d8cff; --zone:#38b6c6; --zone-fill:rgba(56,182,198,.16); color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.55;margin:0}
+.wrap{max-width:1120px;margin:0 auto;padding-inline:16px;padding-block:28px 64px;display:grid;gap:40px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.15;margin:0}
+h1{font-size:clamp(2rem,4.5vw,2.9rem);font-weight:700;letter-spacing:.005em}
+h2{font-size:1.65rem;font-weight:600}
+h3{font-size:1.2rem;font-weight:600}
+p{margin:0;max-width:68ch}
+.eyebrow{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.lede{color:var(--muted);font-size:1.08rem}
+header{display:grid;gap:10px}
+section{display:grid;gap:16px}
+code,.mono{font-family:var(--f-mono);font-size:.88em}
+.sheet{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:16px;display:grid;gap:10px;min-width:0}
+.sheet-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.sheet-head span{font-family:var(--f-mono);font-size:.75rem;color:var(--muted)}
+.plates{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:16px}
+svg{display:block;width:100%;height:auto}
+svg text{font-family:var(--f-mono);font-size:11px;fill:var(--ink)}
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:12px 20px}
+.ctl{display:grid;gap:4px}
+.ctl label{display:flex;justify-content:space-between;font-size:.9rem;color:var(--muted)}
+.ctl output{font-family:var(--f-mono);color:var(--ink);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.readout{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.ro{border-top:2px solid var(--line);padding-top:6px}
+.ro b{display:block;font-family:var(--f-mono);font-size:1.25rem;font-variant-numeric:tabular-nums;font-weight:600}
+.ro span{font-size:.82rem;color:var(--muted)}
+.status{display:inline-flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:.82rem;padding:4px 10px;border-radius:99px;border:1px solid currentColor;width:max-content}
+.status.ok{color:var(--ok)} .status.bad{color:var(--bad)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:24px;align-items:start}
+.steps{display:grid;gap:18px;counter-reset:s;margin:0;padding:0;list-style:none}
+.steps li{display:grid;grid-template-columns:2.2rem 1fr;gap:12px;align-items:start}
+.steps li::before{counter-increment:s;content:counter(s);font-family:var(--f-display);font-weight:700;font-size:1.3rem;color:var(--accent);border:1.5px solid var(--accent);border-radius:50%;width:2rem;height:2rem;display:grid;place-items:center}
+.steps li>div{display:grid;gap:6px;min-width:0}
+.formula{font-family:var(--f-mono);font-size:.92rem;background:var(--bg);border-left:3px solid var(--angle);padding:10px 12px;overflow-x:auto;white-space:pre}
+.map{width:100%;border-collapse:collapse;font-size:.93rem}
+.map th,.map td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.map th{font-family:var(--f-mono);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:400}
+.tbl{overflow-x:auto}
+.note{font-size:.9rem;color:var(--muted)}
+.measures{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:10px 16px}
+.measures .ctl input{font-family:var(--f-mono);font-size:.95rem;padding:6px 8px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);width:100%}
+button{font-family:var(--f-body);font-size:.9rem;border:1px solid var(--accent);color:var(--accent);background:transparent;border-radius:4px;padding:6px 12px;cursor:pointer;width:max-content}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.msteps{list-style:none;margin:0;padding:0;display:grid;gap:20px;counter-reset:m}
+.mstep{counter-increment:m;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:20px;align-items:start;background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:16px}
+@media (max-width:760px){.mstep{grid-template-columns:1fr}}
+.fig{margin:0;background:var(--bg);border-radius:4px;padding:8px;position:relative}
+.fig::before{content:"Paso " counter(m);position:absolute;top:8px;left:10px;font-family:var(--f-mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.mtext{display:grid;gap:8px;min-width:0}
+.tip{font-size:.9rem;color:var(--muted);border-left:3px solid var(--accent);padding-left:10px}
+ul.plain{margin:0;padding-left:1.1rem;display:grid;gap:4px}
+.fig .k{stroke:var(--ink)} .fig .mut{stroke:var(--muted)} .fig .acc{stroke:var(--accent)} .fig .dim{stroke:var(--angle)}
+.fig .dimf{fill:var(--angle)} .fig .arm-s{stroke:var(--arm)} .fig .ring{fill:var(--paper);stroke:var(--arm);stroke-width:2.5}
+.fig .zone{fill:var(--zone-fill);stroke:var(--zone);stroke-width:2} .fig .tape{fill:var(--tape);stroke:none}
+.fig .t-dim{fill:var(--angle)} .fig .t-acc{fill:var(--accent)} .fig .t-mut{fill:var(--muted)} .fig .t-arm{fill:var(--arm)}
+.fig .band{fill:var(--ok);opacity:.14} .fig .ok-s{stroke:var(--ok)} .fig .t-bad{fill:var(--bad)}
+.fig .phone{fill:none;stroke:var(--accent);stroke-width:2} .fig .cont-y{fill:none;stroke:var(--cube-y);stroke-width:2.5} .fig .cont-g{fill:none;stroke:var(--ok);stroke-width:2.5}
+.log input,.log select{font-family:var(--f-mono);font-size:.85rem;width:5.6rem;padding:4px 6px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink)}
+.log td:first-child{white-space:nowrap}
+@media (prefers-reduced-motion:no-preference){svg .live{transition:all .12s ease-out}}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><marker id="d1" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0 L0 5 L10 10 z" fill="var(--angle)"/></marker><marker id="d2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--angle)"/></marker></defs></svg>
+<div class="wrap">
+<header>
+  <div class="eyebrow">Sistema Multirobot · Perry</div>
+  <h1>Dónde está el origen y cómo se calculan los ángulos</h1>
+  <p class="lede">Todo se mide desde el eje de giro de la base del brazo. Mueve el cubo en la vista de planta o con los controles y mira cómo cambian los ángulos en la vista lateral. Al final están los pasos para medir en el laboratorio y cómo encaja lo que el profesor dibujó en la pizarra.</p>
+</header>
+
+<section aria-labelledby="t-sim">
+  <h2 id="t-sim">1. El sistema de coordenadas, en vivo</h2>
+  <p>El origen <b>(0, 0, 0)</b> es el punto de la mesa justo debajo del eje de giro de la base. El eje <b>X</b> apunta hacia el centro de la zona azul, el eje <b>Y</b> hacia la izquierda del brazo y el eje <b>Z</b> hacia arriba. Toca la vista de planta para poner el cubo en otro sitio.</p>
+
+  <div class="plates">
+    <div class="sheet">
+      <div class="sheet-head"><h3>Vista de planta (desde la cámara)</h3><span>escala en cm</span></div>
+      <svg id="top" viewBox="0 0 440 400" role="img" aria-label="Vista desde arriba del brazo, la zona azul, los contenedores y el cubo"></svg>
+    </div>
+    <div class="sheet">
+      <div class="sheet-head"><h3>Vista lateral (plano del brazo)</h3><span>tras girar la base θ1</span></div>
+      <svg id="side" viewBox="0 0 440 400" role="img" aria-label="Vista lateral del brazo con los ángulos de hombro, codo y muñeca"></svg>
+    </div>
+  </div>
+
+  <div class="sheet">
+    <div class="controls">
+      <div class="ctl"><label for="cx">X del cubo (hacia la zona) <output id="cxo"></output></label><input id="cx" type="range" min="5" max="35" step="0.1"></div>
+      <div class="ctl"><label for="cy">Y del cubo (izquierda +) <output id="cyo"></output></label><input id="cy" type="range" min="-15" max="15" step="0.1"></div>
+      <div class="ctl"><label for="ca">Giro del cubo φ <output id="cao"></output></label><input id="ca" type="range" min="0" max="89" step="1"></div>
+    </div>
+    <div id="status"></div>
+    <div class="readout" id="readout"></div>
+  </div>
+</section>
+
+<section aria-labelledby="t-board">
+  <h2 id="t-board">2. Lo que dibujó el profesor, traducido</h2>
+  <div class="two">
+    <div class="sheet">
+      <h3>Abajo a la derecha: el brazo de perfil</h3>
+      <p>Es la misma vista lateral de arriba. Sus tres letras son los tres ángulos que hay que calcular:</p>
+      <div class="tbl"><table class="map">
+        <thead><tr><th>Pizarra</th><th>Aquí</th><th>Qué es</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">θ</td><td class="mono">θ2 hombro</td><td>Ángulo entre la horizontal y el primer eslabón</td></tr>
+          <tr><td class="mono">φ</td><td class="mono">θ3 codo</td><td>Ángulo interior entre brazo y antebrazo</td></tr>
+          <tr><td class="mono">ψ</td><td class="mono">θ4 muñeca</td><td>Ángulo interior entre antebrazo y el tramo vertical de la pinza</td></tr>
+          <tr><td class="mono">?</td><td class="mono">r</td><td>La distancia horizontal del eje de la base al cubo. Es lo que mide la cámara</td></tr>
+          <tr><td class="mono">B</td><td class="mono">E1</td><td>La altura de la base hasta el eje del hombro</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note">El dibujo de la izquierda, con el símbolo de giro en la base, es el mismo brazo visto de frente: recuerda que antes de todo la base gira θ1 para mirar al cubo.</p>
+    </div>
+    <div class="sheet">
+      <h3>Arriba: el giro del cubo</h3>
+      <svg id="cubeang" viewBox="0 0 300 200" role="img" aria-label="Cubo girado con dos esquinas y el ángulo phi"></svg>
+      <p>Con dos esquinas vecinas del cubo, vistas por la cámara, sale su giro:</p>
+      <div class="formula">Δx = x' − x
+Δy = y' − y
+φ  = atan2(Δy, Δx)</div>
+      <p class="note">Usa <code>atan2</code> y no <code>arctan(Δy/Δx)</code>: arctan falla cuando Δx = 0 y no distingue cuadrantes. Como el cubo es igual cada 90°, φ se lleva a ±45°, y la pinza gira <b>θ5 = φ − θ1</b>, porque la base ya giró.</p>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="t-math">
+  <h2 id="t-math">3. El cálculo, paso a paso</h2>
+  <p>La condición que lo hace simple viene de la tesis de Lugo: <b>la pinza baja siempre vertical</b>. Así el último tramo (muñeca + pinza) es una recta fija hacia abajo y lo demás es un triángulo.</p>
+  <ol class="steps">
+    <li><div><h3>Girar la base hacia el cubo</h3><div class="formula">θ1 = atan2(y, x)</div></div></li>
+    <li><div><h3>Pasar a la vista lateral</h3><p>Ya girada la base, solo importan dos números: lo lejos que está el cubo y lo alto que queda la muñeca respecto del hombro.</p><div class="formula">r = √(x² + y²)
+a = (z + E45) − E1        z = altura de agarre
+c = √(r² + a²)           distancia hombro → muñeca</div></div></li>
+    <li><div><h3>Resolver el triángulo con la ley de cosenos</h3><p>Los lados son E2, E3 y c. Si c es mayor que E2 + E3, el cubo no se alcanza.</p><div class="formula">hombro  θ2 = atan2(a, r) + acos((c² + E2² − E3²) / (2·c·E2))
+codo    θ3 = acos((E2² + E3² − c²) / (2·E2·E3))
+muñeca  θ4 = atan2(r, a) + acos((c² + E3² − E2²) / (2·c·E3))</div><p class="note">Control rápido: θ2 + θ3 + θ4 + 90° = 360°, porque son los ángulos de un cuadrilátero.</p></div></li>
+    <li><div><h3>Convertir grados en pulsos</h3><p>Para cada servo se anotan dos puntos medidos (por ejemplo 0° y 90° con sus pulsos) y se interpola en línea recta.</p><div class="formula">pulso = p0 + (ángulo − 0°) · (p90 − p0) / 90°</div></div></li>
+  </ol>
+</section>
+
+<section aria-labelledby="t-measure">
+  <h2 id="t-measure">4. Cómo medir en el laboratorio</h2>
+  <p>Cinco pasos, en este orden. Los dibujos están vistos desde arriba (como la cámara), salvo el paso 4, que es de perfil. Lo que va en naranja es lo que se mide; lo amarillo es cinta de papel pegada en la mesa.</p>
+  <ol class="msteps">
+
+    <li class="mstep">
+      <figure class="fig">
+        <svg viewBox="0 0 320 230" role="img" aria-label="Base vista desde arriba con una escuadra tocando dos lados y el centro marcado a 5 cm de cada lado">
+          <circle cx="160" cy="115" r="70" class="arm-s" fill="none" stroke-width="2.5"/>
+          <text x="236" y="60" class="t-arm">base</text><text x="236" y="74" class="t-arm">Ø 10 cm</text>
+          <path d="M90 25 V185 H250" class="k" fill="none" stroke-width="7" stroke-linejoin="miter" opacity=".85"/>
+          <text x="96" y="22">escuadra</text>
+          <line x1="90" y1="115" x2="160" y2="115" class="dim" stroke-width="1.4" marker-start="url(#d1)" marker-end="url(#d2)"/>
+          <text x="125" y="108" text-anchor="middle" class="t-dim">5 cm</text>
+          <line x1="160" y1="185" x2="160" y2="115" class="dim" stroke-width="1.4" marker-start="url(#d1)" marker-end="url(#d2)"/>
+          <text x="166" y="155" class="t-dim">5 cm</text>
+          <rect x="148" y="103" width="24" height="24" class="tape"/>
+          <line x1="152" y1="107" x2="168" y2="123" class="k" stroke-width="2"/><line x1="168" y1="107" x2="152" y2="123" class="k" stroke-width="2"/>
+          <text x="178" y="100" class="t-acc">(0, 0)</text>
+          <text x="258" y="200" text-anchor="end" class="t-mut">mesa</text>
+        </svg>
+      </figure>
+      <div class="mtext">
+        <h3>Marcar el origen</h3>
+        <p>Apoya la escuadra contra la base del brazo de forma que toque dos de sus lados. Desde cada brazo de la escuadra mide hacia dentro <b>la mitad del diámetro</b> (5 cm si la base mide 10 cm). Donde se cruzan las dos medidas está el eje de giro.</p>
+        <p>Como el brazo está encima, marca el punto con cinta <b>justo al lado de la base</b>, sobre la línea del eje X del paso 2, y anota a cuántos cm del centro quedó. Si el brazo se puede levantar un momento, mejor: cinta en el centro exacto con una X.</p>
+        <p class="tip">Comprobación: gira la base de un extremo al otro. La punta de la pinza debe dibujar un arco cuyo centro es tu marca.</p>
+      </div>
+    </li>
+
+    <li class="mstep">
+      <figure class="fig">
+        <svg viewBox="0 0 320 240" role="img" aria-label="Línea con regla desde el origen hasta el centro de la zona, encontrado con las diagonales">
+          <rect x="102" y="24" width="116" height="95" class="zone"/>
+          <line x1="102" y1="24" x2="218" y2="119" class="mut" stroke-dasharray="4 4"/>
+          <line x1="218" y1="24" x2="102" y2="119" class="mut" stroke-dasharray="4 4"/>
+          <text x="222" y="40" class="t-mut">diagonales</text>
+          <circle cx="160" cy="71" r="4" class="dimf"/>
+          <text x="166" y="66" class="t-dim">centro</text>
+          <rect x="155" y="78" width="10" height="148" class="tape" opacity=".85"/>
+          <text x="172" y="170" class="t-mut">regla o cinta</text>
+          <circle cx="160" cy="210" r="30" class="arm-s" fill="none" stroke-width="2"/>
+          <line x1="160" y1="210" x2="160" y2="150" class="arm-s" stroke-width="8" stroke-linecap="round" opacity=".75"/>
+          <circle cx="160" cy="210" r="4" class="dimf"/>
+          <text x="80" y="214" class="t-acc">(0, 0)</text>
+          <text x="40" y="150" class="t-arm">pinza sobre</text>
+          <text x="40" y="164" class="t-arm">la línea →</text>
+          <text x="40" y="178" class="t-arm">base a 0°</text>
+          <text x="300" y="232" text-anchor="end" class="t-acc">eje X ↑</text>
+        </svg>
+      </figure>
+      <div class="mtext">
+        <h3>Trazar el eje X</h3>
+        <p>Busca el centro de la zona azul cruzando sus diagonales (con dos hilos o la regla). Pega una tira de cinta desde el origen hasta ese centro: esa tira <b>es el eje X</b>.</p>
+        <p>Con <code>servo_jog.py</code>, gira la base hasta que el brazo quede justo encima de la tira, mirando desde arriba. El pulso de la base en esa posición se anota como <b>base a 0°</b>. Hacia la izquierda es Y positivo.</p>
+      </div>
+    </li>
+
+    <li class="mstep">
+      <figure class="fig">
+        <svg viewBox="0 0 320 240" role="img" aria-label="Cotas desde el origen al borde cercano y lejano de la zona, y desde el eje X a cada costado">
+          <rect x="102" y="24" width="116" height="95" class="zone"/>
+          <line x1="160" y1="10" x2="160" y2="226" class="acc" stroke-dasharray="6 4"/>
+          <circle cx="160" cy="226" r="4" class="dimf"/>
+          <line x1="250" y1="226" x2="250" y2="119" class="dim" stroke-width="1.4" marker-start="url(#d1)" marker-end="url(#d2)"/>
+          <line x1="218" y1="119" x2="256" y2="119" class="mut" stroke-dasharray="2 3"/>
+          <line x1="160" y1="226" x2="256" y2="226" class="mut" stroke-dasharray="2 3"/>
+          <text x="256" y="176" class="t-dim">A</text>
+          <line x1="290" y1="226" x2="290" y2="24" class="dim" stroke-width="1.4" marker-start="url(#d1)" marker-end="url(#d2)"/>
+          <line x1="218" y1="24" x2="296" y2="24" class="mut" stroke-dasharray="2 3"/>
+          <text x="296" y="128" class="t-dim">B</text>
+          <line x1="160" y1="60" x2="102" y2="60" class="dim" stroke-width="1.4" marker-start="url(#d1)" marker-end="url(#d2)"/>
+          <text x="131" y="54" text-anchor="middle" class="t-dim">C</text>
+          <line x1="160" y1="92" x2="218" y2="92" class="dim" stroke-width="1.4" marker-start="url(#d1)" marker-end="url(#d2)"/>
+          <text x="189" y="86" text-anchor="middle" class="t-dim">D</text>
+          <text x="40" y="200" class="t-acc">eje X</text>
+          <text x="40" y="214" class="t-acc">(la cinta)</text>
+        </svg>
+      </figure>
+      <div class="mtext">
+        <h3>Medir la zona respecto del origen</h3>
+        <div class="tbl"><table class="map">
+          <thead><tr><th>Cota</th><th>Desde</th><th>Hasta</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">A</td><td>Origen, siguiendo la cinta</td><td>Borde cercano de la zona</td></tr>
+            <tr><td class="mono">B</td><td>Origen, siguiendo la cinta</td><td>Borde lejano de la zona</td></tr>
+            <tr><td class="mono">C</td><td>La cinta (eje X)</td><td>Costado izquierdo</td></tr>
+            <tr><td class="mono">D</td><td>La cinta (eje X)</td><td>Costado derecho</td></tr>
+          </tbody>
+        </table></div>
+        <p class="tip">Mide C y D en perpendicular a la cinta (apoya la escuadra en ella). B − A debe dar 13,5 y C + D debe dar 16,5; si no, la cinta no pasa por el centro.</p>
+      </div>
+    </li>
+
+    <li class="mstep">
+      <figure class="fig">
+        <svg viewBox="0 0 320 240" role="img" aria-label="Brazo de perfil con cotas medidas de eje a eje: E1, E2, E3 y E45">
+          <line x1="10" y1="205" x2="310" y2="205" class="k" stroke-width="2"/>
+          <rect x="34" y="176" width="52" height="29" class="arm-s" fill="none" stroke-width="2"/>
+          <polyline points="60,176 99,108 203,114 203,190" class="arm-s" fill="none" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="60" cy="176" r="6" class="ring"/><circle cx="99" cy="108" r="6" class="ring"/><circle cx="203" cy="114" r="6" class="ring"/>
+          <line x1="22" y1="205" x2="22" y2="176" class="dim" stroke-width="1.4" marker-start="url(#d1)" marker-end="url(#d2)"/>
+          <line x1="16" y1="176" x2="60" y2="176" class="mut" stroke-dasharray="2 3"/>
+          <text x="8" y="168" class="t-dim">E1</text>
+          <line x1="48" y1="166" x2="87" y2="99" class="dim" stroke-width="1.4" marker-start="url(#d1)" marker-end="url(#d2)"/>
+          <text x="44" y="126" class="t-dim">E2</text>
+          <line x1="99" y1="92" x2="203" y2="98" class="dim" stroke-width="1.4" marker-start="url(#d1)" marker-end="url(#d2)"/>
+          <text x="146" y="86" class="t-dim">E3</text>
+          <line x1="226" y1="114" x2="226" y2="196" class="dim" stroke-width="1.4" marker-start="url(#d1)" marker-end="url(#d2)"/>
+          <line x1="203" y1="196" x2="232" y2="196" class="mut" stroke-dasharray="2 3"/>
+          <text x="232" y="158" class="t-dim">E45</text>
+          <path d="M195 190 L195 200 M211 190 L211 200" class="arm-s" stroke-width="3"/>
+          <text x="214" y="40" class="t-acc">✓ de centro</text><text x="214" y="54" class="t-acc">a centro</text>
+          <text x="214" y="70" class="t-mut">de los ejes</text>
+          <text x="214" y="84" class="t-mut">(tornillos)</text>
+        </svg>
+      </figure>
+      <div class="mtext">
+        <h3>Medir el brazo de eje a eje</h3>
+        <p>Cada medida va <b>del centro de un tornillo de giro al centro del siguiente</b>, nunca de borde a borde de la pieza. Pon el calibrador con las puntas en el centro de cada tornillo.</p>
+        <ul class="plain">
+          <li><b>E1:</b> de la mesa al centro del eje del hombro.</li>
+          <li><b>E2:</b> eje del hombro → eje del codo.</li>
+          <li><b>E3:</b> eje del codo → eje de la muñeca.</li>
+          <li><b>E45:</b> eje de la muñeca → punta de la pinza <b>cerrada</b>, con la pinza colgando vertical.</li>
+        </ul>
+        <p class="tip">Más fácil con el brazo estirado y en reposo sobre la mesa. Mide dos veces y anota el promedio.</p>
+      </div>
+    </li>
+
+    <li class="mstep">
+      <figure class="fig">
+        <svg viewBox="0 0 320 240" role="img" aria-label="Zona con cinco puntos de prueba: cuatro esquinas metidas 2 cm y el centro">
+          <rect x="61" y="20" width="198" height="162" class="zone"/>
+          <g class="dimf">
+            <circle cx="85" cy="44" r="5"/><circle cx="235" cy="44" r="5"/><circle cx="85" cy="158" r="5"/><circle cx="235" cy="158" r="5"/><circle cx="160" cy="101" r="5"/>
+          </g>
+          <text x="93" y="40" class="t-dim">P1</text><text x="200" y="40" class="t-dim">P2</text>
+          <text x="93" y="172" class="t-dim">P3</text><text x="200" y="172" class="t-dim">P4</text>
+          <text x="168" y="98" class="t-dim">P5</text>
+          <line x1="61" y1="64" x2="85" y2="64" class="dim" stroke-width="1.2" marker-start="url(#d1)" marker-end="url(#d2)"/>
+          <text x="64" y="78" class="t-dim">2 cm</text>
+          <line x1="160" y1="182" x2="160" y2="226" class="acc" stroke-dasharray="6 4"/>
+          <text x="166" y="222" class="t-acc">hacia el origen ↓</text>
+        </svg>
+      </figure>
+      <div class="mtext">
+        <h3>Marcar los cinco puntos de prueba</h3>
+        <p>Cuatro puntos metidos 2 cm hacia dentro desde cada esquina, más el centro. Con las medidas del paso 3 sus coordenadas salen solas:</p>
+        <div class="tbl"><table class="map">
+          <thead><tr><th>Punto</th><th>x (cm)</th><th>y (cm)</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">P1 lejano izq.</td><td class="mono">B − 2</td><td class="mono">+(C − 2)</td></tr>
+            <tr><td class="mono">P2 lejano der.</td><td class="mono">B − 2</td><td class="mono">−(D − 2)</td></tr>
+            <tr><td class="mono">P3 cercano izq.</td><td class="mono">A + 2</td><td class="mono">+(C − 2)</td></tr>
+            <tr><td class="mono">P4 cercano der.</td><td class="mono">A + 2</td><td class="mono">−(D − 2)</td></tr>
+            <tr><td class="mono">P5 centro</td><td class="mono">(A + B) / 2</td><td class="mono">0</td></tr>
+          </tbody>
+        </table></div>
+        <p>Escribe las coordenadas en cada cinta. Luego, con <code>servo_jog.py</code>, lleva la punta de la pinza <b>vertical</b> a cada punto, a la altura de agarre, y anota el pulso de los seis canales.</p>
+        <p class="tip">Si a P1 o P2 no llega con la pinza vertical, anota cuántos cm le faltan: es el dato que decide si hay que acercar el robot.</p>
+      </div>
+    </li>
+  </ol>
+
+  <div class="sheet">
+    <h3>Tus medidas</h3>
+    <p class="note">Escribe aquí lo que midan: los dibujos de la sección 1 se recalculan y se guardan en este navegador. «Origen → borde cercano» es la cota A y el fondo es B − A. Los valores de partida son los estimados del grupo.</p>
+    <div class="measures" id="measures"></div>
+    <button id="reset" type="button">Volver a los valores estimados</button>
+  </div>
+</section>
+
+<section aria-labelledby="t-today">
+  <h2 id="t-today">5. La sesión de hoy: alcance, calibración y primer agarre</h2>
+  <p>Con las medidas reales (E1 3,3 · E2 10 · E3 12 · E45 10,13 cm) el brazo es el mismo de la tesis de Lugo. Con la pinza vertical llega hasta <b>20,6 cm</b> del eje, y con el hombro limitado a 90° no baja de <b>11,8 cm</b>. Hoy se comprueba eso en el brazo real y se anotan los números que necesita el primer agarre automático.</p>
+  <ol class="msteps" style="counter-reset:m 5">
+
+    <li class="mstep">
+      <figure class="fig">
+        <svg viewBox="0 0 320 300" role="img" aria-label="Zona azul con la franja de entrega marcada entre 12 y 19,5 cm del eje y cinco puntos de prueba">
+          <rect x="61" y="16" width="198" height="162" class="zone"/>
+          <rect x="61" y="56" width="198" height="90" class="band"/>
+          <rect x="61" y="53" width="198" height="6" class="tape"/><rect x="61" y="143" width="198" height="6" class="tape"/>
+          <path d="M 13 117 A 247 247 0 0 1 307 117" class="ok-s" fill="none" stroke-dasharray="6 4" stroke-width="1.6"/>
+          <path d="M 18 290 A 142 142 0 0 1 302 290" class="dim" fill="none" stroke-dasharray="3 4" stroke-width="1.4"/>
+          <text x="160" y="34" text-anchor="middle" class="t-bad">no llega (más de 20,6 cm)</text>
+          <text x="160" y="170" text-anchor="middle" class="t-dim">hombro &gt; 90°</text>
+          <g class="dimf"><circle cx="160" cy="146" r="5"/><circle cx="160" cy="98" r="5"/><circle cx="160" cy="56" r="5"/><circle cx="88" cy="98" r="5"/><circle cx="232" cy="98" r="5"/></g>
+          <text x="166" y="141" class="t-dim">T1 (12, 0)</text>
+          <text x="166" y="93" class="t-dim">T2 (16, 0)</text>
+          <text x="168" y="48" class="t-dim">T3 (19,5, 0)</text>
+          <text x="66" y="88" class="t-dim">T4 (16, 6)</text>
+          <text x="196" y="122" class="t-dim">T5 (16, −6)</text>
+          <line x1="160" y1="178" x2="160" y2="290" class="acc" stroke-dasharray="6 4"/>
+          <circle cx="160" cy="290" r="4" class="dimf"/>
+          <text x="168" y="286" class="t-acc">(0, 0) eje de la base</text>
+          <text x="20" y="230" class="t-mut">franja de</text><text x="20" y="244" class="t-mut">entrega:</text><text x="20" y="258" class="t-mut">12 → 19,5 cm</text>
+        </svg>
+      </figure>
+      <div class="mtext">
+        <h3>Marcar la franja de entrega y los cinco puntos</h3>
+        <p>Sobre la cinta del eje X, mide desde el origen y pega dos tiras atravesando la zona: una a <b>12 cm</b> y otra a <b>19,5 cm</b>. Entre las dos queda la franja donde Phineas y Ferb deben dejar los cubos.</p>
+        <p>Marca los cinco puntos de prueba con un punto de marcador: T1, T2 y T3 sobre la cinta a 12, 16 y 19,5 cm; T4 y T5 a 16 cm sobre la cinta y 6 cm a cada lado.</p>
+        <p class="tip">Lo que queda por fuera de la franja (la parte lejana y el borde cercano) es justo lo que hay que confirmar hoy en el brazo real.</p>
+      </div>
+    </li>
+
+    <li class="mstep">
+      <figure class="fig">
+        <svg viewBox="0 0 320 290" role="img" aria-label="Brazo de perfil con la pinza vertical tocando el punto T2 a 1 cm de la mesa">
+          <line x1="10" y1="260" x2="310" y2="260" class="k" stroke-width="2"/>
+          <rect x="18" y="220" width="44" height="40" class="arm-s" fill="none" stroke-width="2"/>
+          <polyline points="40,220 89,111 233,126 233,247" class="arm-s" fill="none" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="40" cy="220" r="6" class="ring"/><circle cx="89" cy="111" r="6" class="ring"/><circle cx="233" cy="126" r="6" class="ring"/>
+          <path d="M225 245 V255 M241 245 V255" class="arm-s" stroke-width="3"/>
+          <rect x="248" y="150" width="18" height="60" rx="3" class="phone"/>
+          <text x="272" y="176" class="t-acc">nivel</text><text x="272" y="190" class="t-acc">90°</text>
+          <line x1="233" y1="262" x2="233" y2="282" class="dim" stroke-width="1.4"/>
+          <text x="160" y="284" text-anchor="middle" class="t-dim">punta a 1 cm de la mesa, sobre T2</text>
+          <line x1="40" y1="272" x2="233" y2="272" class="dim" stroke-width="1.2" marker-start="url(#d1)" marker-end="url(#d2)"/>
+          <text x="120" y="268" class="t-dim">16 cm</text>
+          <text x="12" y="200" class="t-dim">≈ 66°</text>
+          <text x="96" y="100" class="t-dim">≈ 108°</text>
+          <text x="196" y="112" class="t-dim">≈ 96°</text>
+        </svg>
+      </figure>
+      <div class="mtext">
+        <h3>Llevar la pinza a cada punto y anotar los pulsos</h3>
+        <p>Con <code>servo_jog.py</code>, mueve una articulación a la vez hasta que la punta de la pinza quede <b>sobre el punto, a 1 cm de la mesa y vertical</b>. Para la verticalidad, apoya el teléfono con la app de nivel contra el tramo de la pinza: debe marcar 90°.</p>
+        <p>Anota el pulso de cada canal en la hoja de abajo. Si no llega, anota cuántos cm faltan.</p>
+        <p class="tip">Orden que menos se pelea: base primero (apuntar al punto), luego hombro y codo para acercar, y al final muñeca para dejar la pinza vertical. Los ángulos del dibujo son los que da el cálculo para T2: sirven para saber si vas bien encaminado.</p>
+      </div>
+    </li>
+
+    <li class="mstep">
+      <figure class="fig">
+        <svg viewBox="0 0 320 330" role="img" aria-label="Cuatro esquemas de calibración: base, hombro, codo y muñeca, cada uno en dos ángulos">
+          <g transform="translate(0,0)">
+            <text x="10" y="18" class="t-acc">BASE (desde arriba)</text>
+            <circle cx="80" cy="110" r="22" class="arm-s" fill="none" stroke-width="2"/>
+            <rect x="77" y="28" width="6" height="60" class="tape"/>
+            <line x1="80" y1="110" x2="80" y2="40" class="arm-s" stroke-width="7" stroke-linecap="round"/>
+            <line x1="80" y1="110" x2="14" y2="110" class="arm-s" stroke-width="7" stroke-linecap="round" opacity=".35" stroke-dasharray="2 0"/>
+            <text x="88" y="60" class="t-dim">0° cinta</text>
+            <text x="8" y="150" class="t-dim">90° izquierda</text>
+          </g>
+          <g transform="translate(160,0)">
+            <text x="10" y="18" class="t-acc">HOMBRO (perfil)</text>
+            <line x1="10" y1="140" x2="150" y2="140" class="mut" stroke-dasharray="3 3"/>
+            <line x1="40" y1="140" x2="40" y2="50" class="arm-s" stroke-width="7" stroke-linecap="round"/>
+            <line x1="40" y1="140" x2="104" y2="76" class="arm-s" stroke-width="7" stroke-linecap="round" opacity=".35"/>
+            <circle cx="40" cy="140" r="5" class="ring"/>
+            <text x="48" y="56" class="t-dim">90° vertical</text>
+            <text x="100" y="100" class="t-dim">45°</text>
+          </g>
+          <g transform="translate(0,165)">
+            <text x="10" y="18" class="t-acc">CODO (perfil)</text>
+            <line x1="14" y1="100" x2="74" y2="100" class="arm-s" stroke-width="7" stroke-linecap="round"/>
+            <line x1="74" y1="100" x2="146" y2="100" class="arm-s" stroke-width="7" stroke-linecap="round"/>
+            <line x1="74" y1="100" x2="74" y2="34" class="arm-s" stroke-width="7" stroke-linecap="round" opacity=".35"/>
+            <circle cx="74" cy="100" r="5" class="ring"/>
+            <text x="96" y="122" class="t-dim">180° recto</text>
+            <text x="82" y="44" class="t-dim">90°</text>
+            <text x="14" y="122" class="t-mut">brazo</text>
+          </g>
+          <g transform="translate(160,165)">
+            <text x="10" y="18" class="t-acc">MUÑECA (perfil)</text>
+            <line x1="10" y1="60" x2="80" y2="60" class="arm-s" stroke-width="7" stroke-linecap="round"/>
+            <line x1="80" y1="60" x2="80" y2="140" class="arm-s" stroke-width="7" stroke-linecap="round"/>
+            <line x1="80" y1="60" x2="150" y2="60" class="arm-s" stroke-width="7" stroke-linecap="round" opacity=".35"/>
+            <circle cx="80" cy="60" r="5" class="ring"/>
+            <text x="88" y="120" class="t-dim">90°</text>
+            <text x="98" y="50" class="t-dim">180°</text>
+            <text x="10" y="80" class="t-mut">antebrazo</text>
+          </g>
+        </svg>
+      </figure>
+      <div class="mtext">
+        <h3>Calibrar grados a pulsos</h3>
+        <p>Para cada articulación, lleva el servo a <b>dos ángulos que puedas comprobar</b> y anota el pulso de cada uno. Con dos puntos el programa saca la recta para cualquier otro ángulo.</p>
+        <ul class="plain">
+          <li><b>Base:</b> 0° con el brazo sobre la cinta del eje X; 90° apuntando a la izquierda (usa la escuadra contra la cinta).</li>
+          <li><b>Hombro:</b> 90° con el brazo vertical; 45° con el nivel del teléfono.</li>
+          <li><b>Codo:</b> 180° con brazo y antebrazo en línea recta; 90° en escuadra.</li>
+          <li><b>Muñeca:</b> 180° con la pinza siguiendo al antebrazo; 90° en escuadra (es la posición de trabajo con el antebrazo horizontal).</li>
+          <li><b>Giro de pinza:</b> 0° con los dedos cerrando de izquierda a derecha, vistos desde atrás del brazo; 90° girada un cuarto de vuelta.</li>
+        </ul>
+        <p class="tip">Anota también hasta dónde llega cada servo sin forzarse (zumbido o temblor = límite). En especial el hombro: si pasa de 90°, la franja crece hacia el borde cercano.</p>
+      </div>
+    </li>
+
+    <li class="mstep">
+      <figure class="fig">
+        <svg viewBox="0 0 320 220" role="img" aria-label="Vista desde arriba del brazo y las tres posiciones fijas: inicio y los dos contenedores">
+          <rect x="105" y="14" width="110" height="80" class="zone"/>
+          <circle cx="160" cy="170" r="22" class="arm-s" fill="none" stroke-width="2"/>
+          <rect x="16" y="132" width="64" height="64" rx="8" class="cont-y"/>
+          <rect x="240" y="132" width="64" height="64" rx="8" class="cont-g"/>
+          <text x="48" y="168" text-anchor="middle" class="t-mut">amarillo</text>
+          <text x="272" y="168" text-anchor="middle" class="t-mut">verde</text>
+          <line x1="160" y1="170" x2="160" y2="120" class="arm-s" stroke-width="7" stroke-linecap="round"/>
+          <line x1="160" y1="170" x2="84" y2="164" class="arm-s" stroke-width="7" stroke-linecap="round" opacity=".35"/>
+          <line x1="160" y1="170" x2="236" y2="164" class="arm-s" stroke-width="7" stroke-linecap="round" opacity=".35"/>
+          <text x="166" y="116" class="t-dim">inicio</text>
+          <text x="40" y="122" class="t-dim">pose 2</text>
+          <text x="244" y="122" class="t-dim">pose 3</text>
+        </svg>
+      </figure>
+      <div class="mtext">
+        <h3>Grabar la pinza y las posiciones fijas</h3>
+        <ul class="plain">
+          <li><b>Pinza:</b> el pulso abierta (con 1 cm de holgura a cada lado del cubo) y el pulso cerrada apretando el cubo sin que el servo zumbe.</li>
+          <li><b>Inicio:</b> brazo recogido y alto, fuera de la vista de la cámara.</li>
+          <li><b>Sobre cada contenedor:</b> la pinza unos 3 cm por encima del borde, centrada en la boca del contenedor.</li>
+        </ul>
+        <p class="tip">Para soltar no hace falta cálculo: el programa va a estas posiciones grabadas y abre la pinza.</p>
+      </div>
+    </li>
+  </ol>
+
+  <div class="sheet" id="sheet-log">
+    <div class="sheet-head"><h3>Hoja de registro</h3><span>pulsos en µs, como los muestra servo_jog.py</span></div>
+    <p class="note">Se guarda sola en este navegador. Al terminar, pulsa «Copiar resultados» y pégalo en el chat. Si usaron <code>main.py</code> de Stalin, sus números están en cuartos de µs: divídelos entre 4.</p>
+    <div class="tbl"><table class="map log" id="log-cal"></table></div>
+    <div class="tbl"><table class="map log" id="log-pts"></table></div>
+    <div class="tbl"><table class="map log" id="log-poses"></table></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap"><button id="copy" type="button">Copiar resultados</button><button id="clearlog" type="button">Borrar hoja</button></div>
+    <textarea id="out" rows="6" readonly hidden style="width:100%;font-family:var(--f-mono);font-size:.82rem;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:8px"></textarea>
+  </div>
+</section>
+
+</div>
+
+<script>
+const DEF={E1:3.3,E2:10,E3:12,E45:10.13,zone_near:9.3,zone_depth:13.5,zone_width:16.5,grip_z:1.0,sh_max:90};
+const LABELS={E1:"E1 · mesa → eje del hombro",E2:"E2 · hombro → codo",E3:"E3 · codo → muñeca",E45:"E45 · muñeca → punta de la pinza",zone_near:"Origen → borde cercano de la zona",zone_depth:"Fondo de la zona (en X)",zone_width:"Ancho de la zona (en Y)",grip_z:"Altura de agarre del cubo",sh_max:"Hombro: ángulo máximo (°)"};
+let M={...DEF};
+try{const s=JSON.parse(localStorage.getItem("perry_m2")||"null");if(s)M={...DEF,...s};}catch(e){}
+const st={x:M.zone_near+M.zone_depth/2,y:0,phi:30};
+const $=id=>document.getElementById(id);
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const D=r=>r*180/Math.PI, R=d=>d*Math.PI/180;
+
+function ik(x,y,z){
+  const t1=Math.atan2(y,x), r=Math.hypot(x,y), a=(z+M.E45)-M.E1, c=Math.hypot(r,a);
+  const ok=c<=M.E2+M.E3 && c>=Math.abs(M.E3-M.E2);
+  if(!ok) return {ok,t1,r,a,c};
+  const t2=Math.atan2(a,r)+Math.acos((c*c+M.E2*M.E2-M.E3*M.E3)/(2*c*M.E2));
+  const t3=Math.acos((M.E2*M.E2+M.E3*M.E3-c*c)/(2*M.E2*M.E3));
+  const t4=Math.atan2(r,a)+Math.acos((c*c+M.E3*M.E3-M.E2*M.E2)/(2*c*M.E3));
+  return {ok,t1,r,a,c,t2,t3,t4};
+}
+const f1=v=>(Math.round(v*10)/10).toFixed(1);
+
+// ---------- planta ----------
+const TS=11, TOX=220, TOY=338; // 1 cm = 11 px; origen abajo al centro
+const tp=(x,y)=>[TOX-y*TS, TOY-x*TS];
+function drawTop(s){
+  const g=css("--grid"),ln=css("--line"),acc=css("--accent"),arm=css("--arm"),ang=css("--angle");
+  const aW=(s.z+M.E45)-M.E1, rmax=Math.sqrt(Math.max(0,(M.E2+M.E3)**2-aW*aW)), rmin=Math.sqrt(Math.max(0,(M.E3-M.E2)**2-aW*aW));
+  let h="";
+  for(let i=-20;i<=20;i++){const [X]=tp(0,i);h+=`<line x1="${X}" y1="0" x2="${X}" y2="400" stroke="${g}" stroke-width="${i%5?0.6:1.2}"/>`;}
+  for(let i=-4;i<=36;i++){const [,Y]=tp(i,0);h+=`<line x1="0" y1="${Y}" x2="440" y2="${Y}" stroke="${g}" stroke-width="${i%5?0.6:1.2}"/>`;}
+  // alcance
+  h+=`<path d="M ${TOX-rmax*TS} ${TOY} A ${rmax*TS} ${rmax*TS} 0 0 1 ${TOX+rmax*TS} ${TOY}" fill="none" stroke="${css("--ok")}" stroke-dasharray="5 4" stroke-width="1.5"/>`;
+  h+=`<text x="436" y="394" text-anchor="end" fill="${css("--ok")}">- - alcance, pinza vertical: ${f1(rmax)} cm</text>`;
+  let lo=0.5,hi=rmax; for(let i=0;i<40;i++){const mid=(lo+hi)/2;const c=Math.hypot(mid,aW);const t2=D(Math.atan2(aW,mid)+Math.acos((c*c+M.E2*M.E2-M.E3*M.E3)/(2*c*M.E2)));if(t2>M.sh_max)lo=mid;else hi=mid;}
+  const rin=hi;
+  h+=`<path d="M ${TOX-rin*TS} ${TOY} A ${rin*TS} ${rin*TS} 0 0 1 ${TOX+rin*TS} ${TOY}" fill="none" stroke="${ang}" stroke-dasharray="3 4" stroke-width="1.4"/>`;
+  h+=`<text x="436" y="380" text-anchor="end" fill="${ang}">· · hombro ≤ ${f1(M.sh_max)}°: desde ${f1(rin)} cm</text>`;
+  // zona
+  const [zx1,zy1]=tp(M.zone_near+M.zone_depth,M.zone_width/2);
+  h+=`<rect x="${zx1}" y="${zy1}" width="${M.zone_width*TS}" height="${M.zone_depth*TS}" fill="${css("--zone-fill")}" stroke="${css("--zone")}" stroke-width="2"/>`;
+  h+=`<text x="${zx1+4}" y="${zy1-6}" fill="${css("--zone")}">zona ${f1(M.zone_width)} × ${f1(M.zone_depth)}</text>`;
+  // puntos de prueba
+  const pts=[[M.zone_near+2,M.zone_width/2-2],[M.zone_near+2,-M.zone_width/2+2],[M.zone_near+M.zone_depth-2,M.zone_width/2-2],[M.zone_near+M.zone_depth-2,-M.zone_width/2+2],[M.zone_near+M.zone_depth/2,0]];
+  pts.forEach(([x,y])=>{const [X,Y]=tp(x,y);h+=`<circle cx="${X}" cy="${Y}" r="3" fill="none" stroke="${css("--muted")}" stroke-width="1.2"/>`;});
+  // contenedores
+  const cont=(x,y,col,lab)=>{const [X,Y]=tp(x,y);return `<rect x="${X-30}" y="${Y-28}" width="60" height="56" rx="8" fill="none" stroke="${col}" stroke-width="2"/><text x="${X}" y="${Y+4}" text-anchor="middle" fill="${col}">${lab}</text>`;};
+  h+=cont(3,13,css("--cube-y"),"amarillo")+cont(3,-13,css("--ok"),"verde");
+  // ejes
+  h+=`<line x1="${TOX}" y1="${TOY}" x2="${TOX}" y2="${TOY-5.5*TS}" stroke="${ang}" stroke-width="2" marker-end="url(#ah)"/><text x="${TOX+6}" y="${TOY-5.5*TS}" fill="${ang}">X</text>`;
+  h+=`<line x1="${TOX}" y1="${TOY}" x2="${TOX-5.5*TS}" y2="${TOY}" stroke="${ang}" stroke-width="2" marker-end="url(#ah)"/><text x="${TOX-5.5*TS}" y="${TOY-6}" fill="${ang}">Y</text>`;
+  // base
+  h+=`<circle cx="${TOX}" cy="${TOY}" r="${5*TS}" fill="none" stroke="${arm}" stroke-width="1.5"/><circle cx="${TOX}" cy="${TOY}" r="3.5" fill="${ang}"/><text x="${TOX+8}" y="${TOY+20}" fill="${ang}">(0,0) eje de la base</text>`;
+  // brazo en planta + ángulo θ1
+  const [cxp,cyp]=tp(s.x,s.y);
+  h+=`<line class="live" x1="${TOX}" y1="${TOY}" x2="${cxp}" y2="${cyp}" stroke="${arm}" stroke-width="5" stroke-linecap="round" opacity=".55"/>`;
+  const th=Math.atan2(s.y,s.x), rr=36;
+  h+=`<path d="M ${TOX} ${TOY-rr} A ${rr} ${rr} 0 0 ${th>0?0:1} ${TOX-rr*Math.sin(th)} ${TOY-rr*Math.cos(th)}" fill="none" stroke="${ang}" stroke-width="1.5"/>`;
+  h+=`<text x="${TOX+(th>0?-46:10)}" y="${TOY-rr-6}" fill="${ang}">θ1</text>`;
+  // cubo
+  const cs=3*TS, col=s.y>=0?css("--cube-b"):css("--cube-y");
+  h+=`<g transform="translate(${cxp} ${cyp}) rotate(${-s.phi})"><rect x="${-cs/2}" y="${-cs/2}" width="${cs}" height="${cs}" fill="${col}" stroke="${css("--ink")}" stroke-width="1"/></g>`;
+  h+=`<text x="${cxp+cs/2+6}" y="${cyp+4}">(${f1(s.x)}, ${f1(s.y)})</text>`;
+  h+=`<defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="${ang}"/></marker></defs>`;
+  $("top").innerHTML=h;
+}
+
+// ---------- lateral ----------
+const SS=10.5, SOX=40, SOY=360;
+const sp=(r,z)=>[SOX+r*SS, SOY-z*SS];
+function arc(cx,cy,rad,a0,a1,col){ // ángulos en grados matemáticos (antihorario), y hacia arriba
+  const p=a=>[cx+rad*Math.cos(R(a)), cy-rad*Math.sin(R(a))];
+  const [x0,y0]=p(a0),[x1,y1]=p(a1); const large=Math.abs(a1-a0)>180?1:0; const sweep=a1>a0?0:1;
+  return `<path d="M ${x0} ${y0} A ${rad} ${rad} 0 ${large} ${sweep} ${x1} ${y1}" fill="none" stroke="${col}" stroke-width="1.6"/>`;
+}
+function drawSide(s,k){
+  const g=css("--grid"),arm=css("--arm"),ang=css("--angle"),mut=css("--muted");
+  let h="";
+  for(let i=0;i<=38;i++){const [X]=sp(i,0);h+=`<line x1="${X}" y1="0" x2="${X}" y2="${SOY}" stroke="${g}" stroke-width="${i%5?0.6:1.2}"/>`;}
+  for(let i=0;i<=34;i++){const [,Y]=sp(0,i);h+=`<line x1="${SOX}" y1="${Y}" x2="440" y2="${Y}" stroke="${g}" stroke-width="${i%5?0.6:1.2}"/>`;}
+  h+=`<line x1="0" y1="${SOY}" x2="440" y2="${SOY}" stroke="${css("--ink")}" stroke-width="2"/>`;
+  for(let i=0;i<22;i++)h+=`<line x1="${i*20+4}" y1="${SOY+2}" x2="${i*20-6}" y2="${SOY+12}" stroke="${mut}" stroke-width="1"/>`;
+  // base
+  const [bx0,by0]=sp(-3.5,M.E1),[bx1]=sp(3.5,0);
+  h+=`<rect x="${bx0}" y="${by0}" width="${bx1-bx0}" height="${M.E1*SS}" fill="none" stroke="${arm}" stroke-width="1.6"/><text x="${bx0+4}" y="${SOY-6}">B</text>`;
+  // zona en el piso
+  const [zx0]=sp(Math.hypot(M.zone_near,0),0),[zx1]=sp(M.zone_near+M.zone_depth,0);
+  h+=`<line x1="${zx0}" y1="${SOY-1.5}" x2="${zx1}" y2="${SOY-1.5}" stroke="${css("--zone")}" stroke-width="5"/>`;
+  // cubo
+  const [qx,qy]=sp(k.r-1.5,3);
+  h+=`<rect x="${qx}" y="${qy}" width="${3*SS}" height="${3*SS}" fill="${s.y>=0?css("--cube-b"):css("--cube-y")}" stroke="${css("--ink")}" stroke-width="1"/>`;
+  // cota r
+  const [o0x]=sp(0,0),[o1x]=sp(k.r,0), cy=SOY+26;
+  h+=`<line x1="${o0x}" y1="${cy}" x2="${o1x}" y2="${cy}" stroke="${ang}" stroke-width="1.2"/><line x1="${o0x}" y1="${cy-5}" x2="${o0x}" y2="${cy+5}" stroke="${ang}"/><line x1="${o1x}" y1="${cy-5}" x2="${o1x}" y2="${cy+5}" stroke="${ang}"/><text x="${(o0x+o1x)/2}" y="${cy-5}" text-anchor="middle" fill="${ang}">r = ${f1(k.r)} cm</text>`;
+  if(!k.ok){
+    h+=`<text x="${SOX+10}" y="40" fill="${css("--bad")}">Fuera de alcance: c = ${f1(k.c)} cm &gt; ${f1(M.E2+M.E3)} cm</text>`;
+    const [sx,sy]=sp(0,M.E1),[wx,wy]=sp(k.r,s.z+M.E45);
+    h+=`<line x1="${sx}" y1="${sy}" x2="${wx}" y2="${wy}" stroke="${css("--bad")}" stroke-dasharray="5 4" stroke-width="1.5"/>`;
+    $("side").innerHTML=h;return;
+  }
+  const sh=[0,M.E1], el=[M.E2*Math.cos(k.t2), M.E1+M.E2*Math.sin(k.t2)], wr=[k.r, s.z+M.E45], tip=[k.r, s.z];
+  const P=p=>sp(p[0],p[1]);
+  const [Sx,Sy]=P(sh),[Ex,Ey]=P(el),[Wx,Wy]=P(wr),[Tx,Ty]=P(tip);
+  // triángulo auxiliar
+  h+=`<line x1="${Sx}" y1="${Sy}" x2="${Wx}" y2="${Wy}" stroke="${mut}" stroke-dasharray="5 4" stroke-width="1.3"/>`;
+  h+=`<line x1="${Sx}" y1="${Sy}" x2="${Wx}" y2="${Sy}" stroke="${mut}" stroke-dasharray="2 4" stroke-width="1.1"/>`;
+  h+=`<line x1="${Wx}" y1="${Sy}" x2="${Wx}" y2="${Wy}" stroke="${mut}" stroke-dasharray="2 4" stroke-width="1.1"/>`;
+  h+=`<text x="${(Sx+Wx)/2-8}" y="${(Sy+Wy)/2+16}" fill="${mut}">c</text><text x="${Wx+6}" y="${(Sy+Wy)/2}" fill="${mut}">a</text>`;
+  // brazo
+  h+=`<polyline class="live" points="${Sx},${Sy} ${Ex},${Ey} ${Wx},${Wy} ${Tx},${Ty}" fill="none" stroke="${arm}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>`;
+  [[Sx,Sy],[Ex,Ey],[Wx,Wy]].forEach(([x,y])=>h+=`<circle cx="${x}" cy="${y}" r="5.5" fill="${css("--paper")}" stroke="${arm}" stroke-width="2.5"/>`);
+  // pinza
+  h+=`<line x1="${Tx-8}" y1="${Ty}" x2="${Tx+8}" y2="${Ty}" stroke="${arm}" stroke-width="3"/>`;
+  // ángulos
+  const d2=D(k.t2), dirFore=d2-(180-D(k.t3));
+  h+=arc(Sx,Sy,30,0,d2,ang)+`<text x="${Sx+34}" y="${Sy-6}" fill="${ang}">θ2 ${f1(d2)}°</text>`;
+  h+=arc(Ex,Ey,24,d2-180,dirFore,ang);
+  h+=`<text x="${Ex-10}" y="${Ey-30}" fill="${ang}">θ3 ${f1(D(k.t3))}°</text>`;
+  h+=arc(Wx,Wy,22,dirFore+180,270,ang)+`<text x="${Wx+10}" y="${Wy-14}" fill="${ang}">θ4 ${f1(D(k.t4))}°</text>`;
+  // etiquetas de eslabones
+  h+=`<text x="${(Sx+Ex)/2-34}" y="${(Sy+Ey)/2}" fill="${arm}">E2</text><text x="${(Ex+Wx)/2}" y="${(Ey+Wy)/2-10}" fill="${arm}">E3</text><text x="${Wx+12}" y="${(Wy+Ty)/2+20}" fill="${arm}">E45</text>`;
+  $("side").innerHTML=h;
+}
+
+// ---------- cubo y φ ----------
+function drawCube(phi){
+  const ang=css("--angle"),ink=css("--ink"),cx=150,cy=110,s=90;
+  const p=(u,v)=>{const a=R(phi);return [cx+u*Math.cos(a)-v*Math.sin(a), cy-(u*Math.sin(a)+v*Math.cos(a))];};
+  const c=[p(-s/2,-s/2),p(s/2,-s/2),p(s/2,s/2),p(-s/2,s/2)];
+  let h=`<polygon points="${c.map(q=>q.join(",")).join(" ")}" fill="none" stroke="${css("--cube-b")}" stroke-width="2.5"/>`;
+  const [A,B]=c;
+  h+=`<line x1="${A[0]}" y1="${A[1]}" x2="${A[0]+110}" y2="${A[1]}" stroke="${ink}" stroke-width="1" stroke-dasharray="4 3"/>`;
+  h+=`<line x1="${B[0]}" y1="${B[1]}" x2="${B[0]}" y2="${A[1]}" stroke="${ang}" stroke-width="1.4"/>`;
+  h+=`<line x1="${A[0]}" y1="${A[1]+14}" x2="${B[0]}" y2="${A[1]+14}" stroke="${ang}" stroke-width="1.4"/>`;
+  h+=arc(A[0],A[1],34,0,phi,ang);
+  h+=`<circle cx="${A[0]}" cy="${A[1]}" r="4" fill="${css("--bad")}"/><circle cx="${B[0]}" cy="${B[1]}" r="4" fill="${css("--bad")}"/>`;
+  h+=`<text x="${A[0]-40}" y="${A[1]+4}">(x,y)</text><text x="${B[0]+6}" y="${B[1]-4}">(x',y')</text>`;
+  h+=`<text x="${A[0]+40}" y="${A[1]-8}" fill="${ang}">φ ${phi}°</text><text x="${B[0]+6}" y="${(A[1]+B[1])/2}" fill="${ang}">Δy</text><text x="${(A[0]+B[0])/2-8}" y="${A[1]+28}" fill="${ang}">Δx</text>`;
+  $("cubeang").innerHTML=h;
+}
+
+function render(){
+  st.z=M.grip_z;
+  const k=ik(st.x,st.y,st.z);
+  drawTop(st); drawSide(st,k); drawCube(st.phi);
+  $("cxo").textContent=f1(st.x)+" cm"; $("cyo").textContent=f1(st.y)+" cm"; $("cao").textContent=st.phi+"°";
+  $("cx").value=st.x; $("cy").value=st.y; $("ca").value=st.phi;
+  $("status").innerHTML=k.ok?`<span class="status ok">● alcanzable · c = ${f1(k.c)} cm de ${f1(M.E2+M.E3)}</span>`:`<span class="status bad">● fuera de alcance · c = ${f1(k.c)} cm</span>`;
+  let phiRel=st.phi-D(k.t1); phiRel=((phiRel+45)%90+90)%90-45;
+  const cells=[["θ1 base",D(k.t1)],["θ2 hombro",k.ok?D(k.t2):null],["θ3 codo",k.ok?D(k.t3):null],["θ4 muñeca",k.ok?D(k.t4):null],["θ5 giro pinza",phiRel],["r · c",null,`${f1(k.r)} · ${f1(k.c)} cm`]];
+  $("readout").innerHTML=cells.map(([l,v,t])=>`<div class="ro"><b>${t??(v==null?"—":f1(v)+"°")}</b><span>${l}</span></div>`).join("");
+}
+
+// controles
+$("cx").addEventListener("input",e=>{st.x=+e.target.value;render();});
+$("cy").addEventListener("input",e=>{st.y=+e.target.value;render();});
+$("ca").addEventListener("input",e=>{st.phi=+e.target.value;render();});
+$("top").addEventListener("click",e=>{
+  const svg=$("top"),pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;
+  const q=pt.matrixTransform(svg.getScreenCTM().inverse());
+  st.x=Math.max(5,Math.min(35,(TOY-q.y)/TS)); st.y=Math.max(-15,Math.min(15,(TOX-q.x)/TS)); render();
+});
+function buildMeasures(){
+  $("measures").innerHTML=Object.keys(DEF).map(k=>`<div class="ctl"><label for="m_${k}">${LABELS[k]}</label><input id="m_${k}" type="number" step="0.1" min="0" value="${M[k]}" inputmode="decimal"></div>`).join("");
+  Object.keys(DEF).forEach(k=>$("m_"+k).addEventListener("input",e=>{const v=parseFloat(e.target.value);if(!isNaN(v)&&v>0){M[k]=v;try{localStorage.setItem("perry_m2",JSON.stringify(M));}catch(err){}render();}}));
+}
+$("reset").addEventListener("click",()=>{M={...DEF};try{localStorage.removeItem("perry_m2");}catch(e){}buildMeasures();render();});
+buildMeasures(); render();
+// ---------- hoja de registro ----------
+const LOG_KEY="perry_log1";
+let LOG={}; try{LOG=JSON.parse(localStorage.getItem(LOG_KEY)||"{}")||{};}catch(e){}
+const saveLog=()=>{try{localStorage.setItem(LOG_KEY,JSON.stringify(LOG));}catch(e){}};
+const inp=(id,ph="")=>`<input id="${id}" type="text" inputmode="decimal" placeholder="${ph}" value="${(LOG[id]??"").toString().replace(/"/g,"&quot;")}">`;
+const CAL=[["base","Base","0°","90°"],["hombro","Hombro","90°","45°"],["codo","Codo","180°","90°"],["muneca","Muñeca","180°","90°"],["giro","Giro de pinza","0°","90°"],["pinza","Pinza","abierta","cerrada"]];
+const PTS=[["T1","T1 (12, 0)"],["T2","T2 (16, 0)"],["T3","T3 (19,5, 0)"],["T4","T4 (16, 6)"],["T5","T5 (16, −6)"]];
+const JN=["base","hombro","codo","muneca","giro"];
+const POSES=[["inicio","Inicio"],["amarillo","Sobre contenedor amarillo"],["verde","Sobre contenedor verde"]];
+function buildLog(){
+  $("log-cal").innerHTML=`<thead><tr><th>Articulación</th><th>Canal</th><th>Pulso en ángulo 1</th><th>Pulso en ángulo 2</th><th>Mín. seguro</th><th>Máx. seguro</th></tr></thead><tbody>`+
+   CAL.map(([k,n,a1,a2])=>`<tr><td>${n}</td><td>${inp("ch_"+k,"#")}</td><td>${inp("cal_"+k+"_1",a1)}</td><td>${inp("cal_"+k+"_2",a2)}</td><td>${inp("min_"+k,"µs")}</td><td>${inp("max_"+k,"µs")}</td></tr>`).join("")+`</tbody>`;
+  $("log-pts").innerHTML=`<thead><tr><th>Punto</th>${JN.map(j=>`<th>${j}</th>`).join("")}<th>¿Llega?</th><th>Faltan (cm)</th></tr></thead><tbody>`+
+   PTS.map(([k,n])=>`<tr><td>${n}</td>${JN.map(j=>`<td>${inp("p_"+k+"_"+j,"µs")}</td>`).join("")}<td><select id="p_${k}_ok"><option value=""></option><option${LOG["p_"+k+"_ok"]==="sí"?" selected":""}>sí</option><option${LOG["p_"+k+"_ok"]==="no"?" selected":""}>no</option></select></td><td>${inp("p_"+k+"_falta","cm")}</td></tr>`).join("")+`</tbody>`;
+  $("log-poses").innerHTML=`<thead><tr><th>Posición</th>${JN.map(j=>`<th>${j}</th>`).join("")}<th>pinza</th></tr></thead><tbody>`+
+   POSES.map(([k,n])=>`<tr><td>${n}</td>${JN.concat("pinza").map(j=>`<td>${inp("q_"+k+"_"+j,"µs")}</td>`).join("")}</tr>`).join("")+`</tbody>`;
+  document.querySelectorAll("#sheet-log input, #sheet-log select").forEach(el=>el.addEventListener("input",()=>{LOG[el.id]=el.value;saveLog();}));
+}
+function logText(){
+  const v=k=>LOG[k]||"—";
+  let t="CALIBRACIÓN (canal | ángulo1 | ángulo2 | mín | máx)\n";
+  CAL.forEach(([k,n,a1,a2])=>t+=`${n}: canal ${v("ch_"+k)} | ${a1}=${v("cal_"+k+"_1")} | ${a2}=${v("cal_"+k+"_2")} | min ${v("min_"+k)} | max ${v("max_"+k)}\n`);
+  t+="\nPUNTOS (base, hombro, codo, muñeca, giro | llega | faltan)\n";
+  PTS.forEach(([k,n])=>t+=`${n}: ${JN.map(j=>v("p_"+k+"_"+j)).join(", ")} | ${v("p_"+k+"_ok")} | ${v("p_"+k+"_falta")}\n`);
+  t+="\nPOSICIONES FIJAS (base, hombro, codo, muñeca, giro, pinza)\n";
+  POSES.forEach(([k,n])=>t+=`${n}: ${JN.concat("pinza").map(j=>v("q_"+k+"_"+j)).join(", ")}\n`);
+  t+=`\nMEDIDAS: ${Object.keys(DEF).map(k=>k+"="+M[k]).join(", ")}\n`;
+  return t;
+}
+$("copy").addEventListener("click",()=>{const t=logText();const o=$("out");o.value=t;o.hidden=false;
+  const done=()=>{$("copy").textContent="Copiado";setTimeout(()=>$("copy").textContent="Copiar resultados",1800);};
+  try{navigator.clipboard.writeText(t).then(done,()=>{o.select();});}catch(e){o.select();}});
+$("clearlog").addEventListener("click",()=>{if($("clearlog").dataset.armed){LOG={};saveLog();buildLog();$("out").hidden=true;$("clearlog").textContent="Borrar hoja";delete $("clearlog").dataset.armed;}else{$("clearlog").dataset.armed="1";$("clearlog").textContent="Pulsa otra vez para borrar";setTimeout(()=>{delete $("clearlog").dataset.armed;$("clearlog").textContent="Borrar hoja";},3000);}});
+buildLog();
+
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",render);
+new MutationObserver(render).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+</script>

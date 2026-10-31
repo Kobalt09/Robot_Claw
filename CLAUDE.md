@@ -24,7 +24,7 @@ Tres robots:
 - Visión: sustracción de fondo para encontrar el cubo (el cubo azul está sobre fondo azul) y HSV sobre el recorte para el color. YOLO solo si sobra tiempo.
 - Brazo: cinemática inversa geométrica de la tesis de Miguel Lugo (UCAB, 2023, tutor Jesús Lárez). Es **el mismo modelo de brazo** (E2 = 10, E3 = 12 cm coinciden).
 
-Documento completo: `docs/tecnologia.md`. Guía visual con dibujos, cálculo en vivo y hoja de registro: `Claude outputs/perry-coordenadas.html` (también publicada en claude.ai, privada de Ignacio).
+Documento completo: `docs/tecnologia.md`. Guía visual con dibujos, cálculo en vivo y hoja de registro: `docs/perry-coordenadas.html` (también publicada en claude.ai, privada de Ignacio).
 
 ## Medidas reales (14-10-2026)
 
@@ -118,6 +118,16 @@ Hecho: medidas reales; `perry/` escrito; **primera sesión con el brazo real (14
 - Planificador: margen lateral de los dedos 0,1 cm; no agarra si entre los dedos puede quedar un cubo de **otro** color (del mismo sí); empujes perpendiculares primero; empuja con la pinza cerrada del todo (2350); el tope de empujes es por atasco. Después de agarrar va **directo a la caja** y verifica al final.
 - **Última corrida:** 4 de 4 cubos al primer intento; 2 ignorados a 19,5 y 20,5 cm (fuera de alcance). **La zona azul llega a ~22,8 cm y el brazo a 19,5**: los carros deben soltar los cubos entre 12 y 19,5 cm del eje (convendría marcar esa franja).
 - Pendiente: medir el extremo izquierdo de la base (+36,6°); explicar un Cancelar que llegó sin que nadie lo apretara (ahora se registra la IP); estado ZONA BLOQUEADA con aviso MQTT; requisitos escritos para los equipos de los carros; probar en la Raspberry.
+
+**Tarde del 31-10-2026: Perry corre en la Raspberry y propuesta de comunicación** (estado para quien continúe)
+
+- **Cámara recalibrada con las esquinas del AZUL de la zona** (sin las cintas verdes), porque se retiró la milimetrada. Los cm se midieron con la calibración anterior: X de 11,5 a 21,5, Y de −8,4 a 8,1 (el azul visible mide ~10 × 16,5 cm; la tabla de 13,5 cm de arriba incluye lo que tapan las cintas). **Si mueven la cámara, solo cambian `camera.corners_px`** (las 4 esquinas del azul en la imagen). Verificado agarrando un cubo.
+- **Perry corre en la Pi** (Raspberry Pi 4, 4 GB, Debian 13, sin internet). Código en `~/Robot_Claw_perry` (se copia con `git archive HEAD perry codigo_python docs | ssh … tar -xmf -`). Acceso: `ssh manipulador@169.254.49.182`, con cable directo PC–Pi (la PC sale a internet por Wi-Fi; con ProtonVPN, excluir esa IP en el túnel dividido). Panel: `cd ~/Robot_Claw_perry/perry && setsid nohup python3 audit_web.py > ~/perry_panel.log 2>&1 < /dev/null &` → `http://169.254.49.182:8000`.
+- En la Pi: Maestro en `/dev/ttyACM0` (valor de `arm.yaml`), webcam en el índice 0. Ya tiene todo instalado (OpenCV, pyserial, PyYAML, pytest, Docker). **No arranca si la Maestro y la webcam están conectadas al encender**: conectarlas después, o usar un hub USB con fuente. Al arrancar, los servos quedan en 0 µs: energizar de a uno con los pulsos de la postura en que está el brazo. El reloj está atrasado (~200 días): las carpetas de `logs/` salen con fecha falsa.
+- **Primera corrida en la Pi:** 5 cubos clasificados, 25–28 s por cubo (igual que en la PC), sin caídas de tensión, 46 °C, carga 1,2, 344 MB. La Pi no es el cuello de botella.
+- **Arreglo:** un empuje en cadena dejó un cubo a 11,7 cm (fuera de alcance; el previsto era 12,2). Ahora los cubos empujados quedan a `push_margin_r` de **los dos** bordes del alcance; test de invariante sobre todas las escenas.
+- **Comunicación con los carros:** su contrato es ROS 2 (`multirobot_interfaces`: llave de la zona `/zone/request`, `/zone/release`, latido `/zone/occupant`), pero **hoy ninguna Pi tiene ROS** y los carros corren scripts de laboratorio sin árbitro. Cristian hizo la parte ROS de Perry con Docker en la rama `mejoras-de-portabilidad` (Jazzy; los carros van a Lyrical). **Propuesta enviada:** el mismo contrato por HTTP desde la Pi de Perry (`docs/comunicacion_flota.md`), con comportamiento definido en `docs/perry_zona_estados.md` (una sola llave para carros y brazo; Perry cierra la zona quedándose con la llave; colores pedidos). Foto de la franja de entrega: `docs/diagramas/zona_franja_entrega.jpg`.
+- **Siguiente:** respuesta de los equipos a las 7 decisiones de la propuesta; árbitro HTTP como proceso aparte con tests y un «carro simulado»; detector de «zona despejada» (objeto grande o ArUco); estado ZONA CERRADA en el panel; red común con IP fija para Perry.
 
 Siguiente (plan original, ya superado en parte):
 
