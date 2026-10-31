@@ -58,9 +58,11 @@ def decide(cfg, cubes, ignored=(), to=None):
         box = to or cfg["containers"].get(c.color)
         return Decision("grab", c, d, unreachable=unreachable,
                         message=f"AGARRAR el cubo {c.color} en ({c.x:.1f}, {c.y:.1f}) y llevarlo a la caja {box}")
-    margin = cfg["reach"]["max_r"] - s["push_margin_r"]
+    # un empuje en cadena corre los cubos unos mm más de lo previsto: margen en AMBOS bordes del alcance
+    r_lo = min(row["r"] for row in cfg["reach"]["rows"]) + s["push_margin_r"]
+    r_hi = cfg["reach"]["max_r"] - s["push_margin_r"]
     arm_ok = lambda p: reachable(cfg, p) and in_zone(cfg, p)                       # noqa: E731  donde puede bajar la pinza
-    cube_ok = lambda p: arm_ok(p) and hypot(p.x, p.y) <= margin                   # noqa: E731  donde pueden quedar cubos
+    cube_ok = lambda p: arm_ok(p) and r_lo <= hypot(p.x, p.y) <= r_hi             # noqa: E731  donde pueden quedar cubos
     plan = plan_push(cubes, g, can_try, point_ok=arm_ok, cube_ok=cube_ok)
     if plan is None:
         return Decision("none", unreachable=unreachable,

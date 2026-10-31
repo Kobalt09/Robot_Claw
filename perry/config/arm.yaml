@@ -86,7 +86,7 @@ sort:
   max_cycles: 12           # tope de vueltas del ciclo (seguridad)
   max_fails_in_a_row: 2   # agarres fallados seguidos -> posible desajuste: se detiene y pide la prueba de precisión
   max_pushes: 3            # tope de empujes SEGUIDOS sin lograr agarrar nada (zona bloqueada)
-  push_margin_r: 1.0       # un cubo empujado debe quedar a <= max_r - esto (en el borde la punta es imprecisa)
+  push_margin_r: 1.0       # un cubo empujado debe quedar a esto de AMBOS bordes del alcance (mínimo de la tabla y max_r): en cadena se corren mm de más
   log_dir: logs            # fotos y registro de cada corrida (dentro de perry/)
 
 # Posturas enseñadas: la punta toca el papel. r = distancia al eje de la base (cm).

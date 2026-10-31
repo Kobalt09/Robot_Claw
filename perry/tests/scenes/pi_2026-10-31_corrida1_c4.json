@@ -1,0 +1,33 @@
+{
+ "source": "pi_2026-10-31_corrida1 ciclo 4",
+ "note": "bloque: el empuje hacia la base dejaba un azul a 12,2 cm (real 11,7, fuera de alcance); empujado debe quedar con margen tambien del lado cercano",
+ "expect": "push",
+ "expect_color": null,
+ "to": null,
+ "cubes": [
+  {
+   "color": "azul",
+   "x": 17.235,
+   "y": 0.42,
+   "angle": -22.49
+  },
+  {
+   "color": "azul",
+   "x": 15.377,
+   "y": 1.584,
+   "angle": -4.44
+  },
+  {
+   "color": "amarillo",
+   "x": 15.375,
+   "y": -2.81,
+   "angle": 40.66
+  },
+  {
+   "color": "amarillo",
+   "x": 13.787,
+   "y": -1.539,
+   "angle": 35.49
+  }
+ ]
+}
