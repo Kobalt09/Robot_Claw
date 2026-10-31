@@ -43,7 +43,7 @@ def summarize(pairs, threshold):
 
 def precision_run(cfg, m, cam, log, stop=None, status=None):
     """Corre la prueba con el brazo. Devuelve el resumen (o None si no se pudo empezar)."""
-    from reach import pulses_at, move_via_top, lower_shoulder
+    from reach import pulses_at, move_via_top, lower_shoulder, OutOfTable
     from sort_cubes import look, pick, go_up, Cancelled
 
     p = cfg["precision"]
@@ -63,7 +63,11 @@ def precision_run(cfg, m, cam, log, stop=None, status=None):
         for i, (tx, ty) in enumerate(p["points"], 1):
             check()
             say(f"Precisión {i}/{len(p['points'])}: llevando el cubo a ({tx}, {ty})")
-            pick(cfg, m, cube, cube.angle, check)
+            try:
+                pick(cfg, m, cube, cube.angle, check)
+            except OutOfTable as e:
+                log(f"  El cubo quedó fuera de alcance ({e}): termino la prueba con lo medido.")
+                break
             g = cfg["gripper"]
             high = pulses_at(cfg, tx, ty, level="approach", grasp_dir=90.0)
             low = pulses_at(cfg, tx, ty, level="grip", grasp_dir=90.0)
