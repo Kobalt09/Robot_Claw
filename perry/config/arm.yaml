@@ -120,7 +120,7 @@ containers: {azul: amarillo, amarillo: verde}   # 27-10: cubos azules -> caja am
 # Prueba de precisión (precision.py / botón del panel): un cubo se deja en estos puntos y la cámara
 # mide dónde quedó. Lugo obtuvo ~1,2 mm de error medio con su brazo.
 precision:
-  points: [[13.0, 0.0], [16.0, 0.0], [18.5, 0.0], [16.0, 5.0], [16.0, -5.0]]
+  points: [[13.0, 0.0], [16.0, 0.0], [17.5, 0.0], [16.0, 5.0], [16.0, -5.0]]   # 18,5 era demasiado al borde (31-10)
   threshold_cm: 0.5        # error cuadrático medio aceptable; más = recalibrar
   place_lift_us: 10        # al soltar, el hombro queda este tanto más alto que al agarrar (no aplastar)
   lost_cm: 4.0             # si el cubo aparece más lejos que esto del punto, se da por perdido
