@@ -30,6 +30,23 @@ def save_image(path, img):
     return ok
 
 
+def wait_still(grab, pause=0.3, tol=4.0, timeout=4.0):
+    """Espera a que la escena esté quieta: dos cuadros seguidos (separados `pause` s) casi iguales.
+
+    La webcam entrega los cuadros con retraso: justo después de estacionar, el último cuadro puede
+    mostrar todavía el brazo cruzando la zona. Devuelve (cuadro, quieto?)."""
+    t0 = time.time()
+    prev = grab()
+    while True:
+        time.sleep(pause)
+        cur = grab()
+        if float(np.mean(cv2.absdiff(prev, cur))) <= tol:
+            return cur, True
+        if time.time() - t0 > timeout:
+            return cur, False
+        prev = cur
+
+
 def parallax_correct(x, y, nadir, cam_height, obj_height):
     """Corrige la paralaje de un objeto de altura obj_height visto desde arriba.
 
@@ -114,6 +131,12 @@ class TopCamera:
         ok, f = self.cam.leer_frame()
         if not ok:
             raise RuntimeError("la cámara cenital no entrega imagen")
+        return f
+
+    def still_frame(self):
+        f, ok = wait_still(self.frame, self.cfg.get("still_pause_s", 0.3), self.cfg.get("still_tol", 4.0),
+                           self.cfg.get("still_timeout_s", 4.0))
+        self.last_still = ok
         return f
 
     def find_cubes(self, frame=None):

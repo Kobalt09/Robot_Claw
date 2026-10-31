@@ -95,8 +95,10 @@ def park_pose(cfg, m):
 def look(cfg, m, cam, log, tag):
     """Estaciona el brazo fuera de la vista y devuelve los cubos de la zona (y la imagen)."""
     move_via_top(m, cfg, park_pose(cfg, m), precise_base=False)
-    time.sleep(0.5)  # que se quede quieto antes de la foto
-    cubes, img = cam.find_cubes()
+    # foto recién cuando la escena está quieta (la webcam tiene retraso: el brazo podía salir cruzando)
+    cubes, img = cam.find_cubes(cam.still_frame())
+    if not getattr(cam, "last_still", True):
+        log("[aviso] la imagen no se quedó quieta (¿algo moviéndose en la zona?): uso la última")
     log.image(tag, img)
     return cubes, img
 
