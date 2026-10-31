@@ -29,6 +29,21 @@ Cada corrida deja registro y fotos en `logs/AAAA-MM-DD_HH-MM-SS/`.
    (`sort.retries`); luego lo da por perdido.
 6. Va al contenedor por arriba y suelta.
 
+## Auditar y convertir fallas en tests
+
+Cada corrida guarda en `logs/<corrida>/` las fotos, `registro.txt` y **`ciclos.jsonl`**: por ciclo,
+los cubos vistos, la decisión (agarrar / empujar) y si el agarre salió.
+
+```
+py replay.py logs/<corrida>                         # qué decidiría HOY el planificador en cada ciclo
+py replay.py guardar logs/<corrida> 3 grab --color amarillo --nota "pegado a un azul"
+py -m pytest tests                                  # incluye todas las escenas guardadas
+```
+
+`guardar` copia la escena a `tests/scenes/`: desde ese momento, si un cambio rompe ese caso, los tests
+fallan. Regla del equipo: **cada falla que se entienda en la mesa se guarda como escena** con lo que
+debería haber hecho.
+
 ## Si algo cambió
 
 | Pasó esto | Hacer |

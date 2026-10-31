@@ -178,8 +178,12 @@ class Handler(BaseHTTPRequestHandler):
             S.go.set()
             return self.send(b"")
         if self.path == "/stop":
+            who = self.client_address[0]
+            S.log.append(f"[{time.strftime('%H:%M:%S')}] CANCELAR pedido desde {who}"
+                         + ("" if S.running else " (no había ciclo en marcha: se ignora)"))
+            print(f"[panel] CANCELAR desde {who}")
             if S.running:
-                S.stop.set(); S.status = "cancelando: termina el movimiento y estaciona"
+                S.stop.set(); S.status = f"cancelando (pedido desde {who}): termina el movimiento y estaciona"
             return self.send(b"")
         if self.path == "/corners":
             if S.running:

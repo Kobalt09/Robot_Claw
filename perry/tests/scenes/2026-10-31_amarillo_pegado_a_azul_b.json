@@ -1,0 +1,21 @@
+{
+ "source": "capturas del panel 31-10",
+ "note": "igual, otra posición",
+ "expect": "grab",
+ "expect_color": "amarillo",
+ "to": null,
+ "cubes": [
+  {
+   "color": "amarillo",
+   "x": 13.2,
+   "y": 3.8,
+   "angle": 25
+  },
+  {
+   "color": "azul",
+   "x": 16.3,
+   "y": 2.7,
+   "angle": 28
+  }
+ ]
+}

@@ -16,6 +16,7 @@ Reglas para que funcione sin nadie al lado:
 Puerto: variable PERRY_PORT (en Windows, por ejemplo COM5) o el de arm.yaml.
 """
 import argparse
+import json
 import os
 import threading
 import time
@@ -28,6 +29,7 @@ from audit import draw_plan
 from grasp import GraspCfg, grab_succeeded
 from maestro import Maestro
 from planner import decide
+from replay import cube_dict
 from reach import pulses_at, move_via_top, lower_shoulder, push, OutOfTable
 from vision import TopCamera, save_image
 
@@ -53,6 +55,12 @@ class Log:
         self.file.write(line + "\n"); self.file.flush()
         if self.sink:
             self.sink(line)
+
+    def record(self, data):
+        """Una línea JSON por evento en ciclos.jsonl (se repite con replay.py)."""
+        data = {"t": time.strftime("%H:%M:%S"), **data}
+        with open(self.dir / "ciclos.jsonl", "a", encoding="utf-8") as f:
+            f.write(json.dumps(data, ensure_ascii=False) + "\n")
 
     def image(self, name, img):
         if not save_image(self.dir / f"{time.strftime('%H-%M-%S')}_{name}.jpg", img):
@@ -125,6 +133,14 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, appro
             cubes, img = look(cfg, m, cam, log, f"vista{cycle}")   # TODOS: también son obstáculos
             dec = decide(cfg, cubes, ignored, to)
             log.image(f"plan{cycle}", draw_plan(img, cam, cfg, cubes, dec))   # para auditar
+            rec = {"cycle": cycle, "event": "decision", "kind": dec.kind, "to": to, "message": dec.message,
+                   "cubes": [cube_dict(c) for c in cubes]}
+            if dec.kind == "grab":
+                rec.update(target=cube_dict(dec.cube), grasp_dir=round(dec.grasp_dir, 1))
+            elif dec.kind == "push":
+                rec.update(target=cube_dict(dec.cube), push_start=[round(v, 2) for v in dec.plan.start],
+                           push_end=[round(v, 2) for v in dec.plan.end])
+            log.record(rec)
             for c in dec.unreachable:
                 log(f"Cubo {c.color} en ({c.x:.1f}, {c.y:.1f}) está FUERA DE ALCANCE "
                     f"(r = {hypot(c.x, c.y):.1f} cm). Lo ignoro.")
@@ -169,7 +185,9 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, appro
             # verificar CONTANDO con la cámara: el agarre salió si hay un cubo menos de ese color
             say(f"Ciclo {cycle}: verificando el agarre")
             after, _ = look(cfg, m, cam, log, f"verificacion{cycle}")
-            if not grab_succeeded(cubes, after, c):
+            ok = grab_succeeded(cubes, after, c)
+            log.record({"cycle": cycle, "event": "result", "ok": ok, "after": [cube_dict(d) for d in after]})
+            if not ok:
                 # el mismo cubo = el intento anterior más cercano (un agarre fallido lo corre unos mm)
                 key = next((k for k in tries if hypot(k[0] - c.x, k[1] - c.y) < 2 * s["same_cube_cm"]), (c.x, c.y))
                 tries[key] = tries.get(key, 0) + 1
