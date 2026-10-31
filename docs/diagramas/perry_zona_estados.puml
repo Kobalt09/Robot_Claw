@@ -1,0 +1,51 @@
+@startuml perry_zona_estados
+title Perry y la zona de entrega: una sola llave para carros y brazo
+hide empty description
+skinparam state {
+  BackgroundColor<<accion>> #E1F5EE
+  BackgroundColor<<espera>> #FAEEDA
+  BackgroundColor<<error>> #FCEBEB
+}
+
+[*] --> Arranque
+
+state "Arranque" as Arranque <<accion>> : energizar servos de a uno\nabrir cámara, estacionar\nllave = perry
+state "Esperando" as Esperando <<espera>> : brazo estacionado (pose vista)\nla cámara mira pero no decide
+state "Carro en zona" as CarroEnZona <<espera>> : llave = phineas / ferb\nbrazo PROHIBIDO\nse ignoran los cubos (pala en imagen)
+state "Asentando" as Asentando <<espera>> : esperar zona despejada:\n1) sin robot a la vista (objeto grande / ArUco 1-2)\n2) escena quieta (wait_still)\n3) t >= t_asentar (2 s)
+state "Clasificando" as Clasificando <<accion>> : llave = perry\nciclo de perry_agarre_estados\n(~27 s por cubo)
+state "Zona cerrada" as Cerrada <<error>> : llave = perry SIN soltar\nlos carros esperan afuera\naviso en el panel
+state "Falla" as Falla <<error>> : cámara / Maestro / desajuste\nllave = perry (zona cerrada)
+
+Arranque --> Esperando : brazo y cámara listos
+Arranque --> Falla : no abre cámara o Maestro
+
+Esperando --> CarroEnZona : un carro recibe la llave
+Esperando --> Clasificando : hay cubos alcanzables\n[zona libre y despejada]
+
+CarroEnZona --> Asentando : el carro devuelve la llave
+CarroEnZona --> Asentando : vence el préstamo (60 s)\n[aviso: carro trabado?]
+
+Asentando --> Esperando : zona despejada y quieta
+Asentando --> Cerrada : pasa t_max_asentar\nsin despejarse
+
+Clasificando --> Esperando : cubo listo y un carro espera,\no la llave vence, o no quedan cubos\n/ suelta la llave
+Clasificando --> Cerrada : max_pushes sin agarrar\no zona llena
+Clasificando --> Falla : 2 agarres fallados seguidos
+
+Cerrada --> Esperando : persona: «Reabrir zona»
+Falla --> Arranque : persona resuelve y reinicia
+
+note right of CarroEnZona
+  Si el carro entra SIN llave,
+  la cámara lo ve (objeto grande)
+  y el brazo se frena: falla del carro.
+end note
+
+note bottom of Falla
+  Si muere el proceso de Perry, se corta
+  /zone/occupant y los carros se frenan
+  solos (contrato: 2 s sin latido).
+  Por eso el árbitro va en un proceso aparte.
+end note
+@enduml
