@@ -109,6 +109,16 @@ Hecho: medidas reales; `perry/` escrito; **primera sesión con el brazo real (14
 - **Siguiente:** estado "ZONA BLOQUEADA" + aviso MQTT a Phineas y Ferb; documento de requisitos para los equipos de los rastrillos; checklist de fallas; probar en la Raspberry.
 - **DroidCam:** no conecta si el teléfono tiene una VPN activa.
 
+**Sesión del 31-10-2026: precisión medida y zona azul real**
+
+- **Cámara cenital: índice 0** (cambia al reconectar). Calibración de la cámara rehecha (`camera.corners_px`); sigue valiendo aunque se quite la milimetrada, mientras no muevan la cámara.
+- **Zona azul real:** su fondo es H 103–104 y los cubos azules H 113–124. El rango `azul` arranca en **109**. Con otra iluminación puede requerir ajuste; lo robusto sería la sustracción de fondo.
+- **Prueba de precisión** (`precision.py` o el botón del panel): mide el error del brazo con "cerrar y soltar" en 5 puntos. Con ella se recalibró la base a 5 puntos y el error medio bajó de **6,4 a 3,0 mm** (Lugo: 1,2 mm). Correrla cuando se sospeche desajuste; resultados en `logs/precision/`.
+- **Escenas como tests:** cada corrida guarda `ciclos.jsonl`; `py replay.py logs/<corrida>` repite con el planificador actual, y `py replay.py guardar …` convierte una falla en test (`tests/scenes/`). 51 tests: `py -m pytest perry/tests`.
+- Planificador: margen lateral de los dedos 0,1 cm; no agarra si entre los dedos puede quedar un cubo de **otro** color (del mismo sí); empujes perpendiculares primero; empuja con la pinza cerrada del todo (2350); el tope de empujes es por atasco. Después de agarrar va **directo a la caja** y verifica al final.
+- **Última corrida:** 4 de 4 cubos al primer intento; 2 ignorados a 19,5 y 20,5 cm (fuera de alcance). **La zona azul llega a ~22,8 cm y el brazo a 19,5**: los carros deben soltar los cubos entre 12 y 19,5 cm del eje (convendría marcar esa franja).
+- Pendiente: medir el extremo izquierdo de la base (+36,6°); explicar un Cancelar que llegó sin que nadie lo apretara (ahora se registra la IP); estado ZONA BLOQUEADA con aviso MQTT; requisitos escritos para los equipos de los carros; probar en la Raspberry.
+
 Siguiente (plan original, ya superado en parte):
 
 1. **Recalibrar hombro, codo y muñeca con posturas enseñadas**: llevar la pinza con comandos a T1, T2 y T3 (vertical, a 1 cm, sobre la marca). La cinemática da el ángulo exacto de cada articulación en esa postura, y así cada postura aporta un par [ángulo, pulso]. Ajustar la recta con los tres puntos. Para ver bien conviene una cámara realmente de perfil (por ejemplo, el teléfono como webcam) y un fondo cuadriculado detrás del brazo. Faltan también el giro (0°/90°) y la pinza (abierta/cerrada).
