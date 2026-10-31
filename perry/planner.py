@@ -59,8 +59,9 @@ def decide(cfg, cubes, ignored=(), to=None):
         return Decision("grab", c, d, unreachable=unreachable,
                         message=f"AGARRAR el cubo {c.color} en ({c.x:.1f}, {c.y:.1f}) y llevarlo a la caja {box}")
     margin = cfg["reach"]["max_r"] - s["push_margin_r"]
-    ok = lambda p: reachable(cfg, p) and in_zone(cfg, p) and hypot(p.x, p.y) <= margin  # noqa: E731
-    plan = plan_push(cubes, g, can_try, point_ok=ok)
+    arm_ok = lambda p: reachable(cfg, p) and in_zone(cfg, p)                       # noqa: E731  donde puede bajar la pinza
+    cube_ok = lambda p: arm_ok(p) and hypot(p.x, p.y) <= margin                   # noqa: E731  donde pueden quedar cubos
+    plan = plan_push(cubes, g, can_try, point_ok=arm_ok, cube_ok=cube_ok)
     if plan is None:
         return Decision("none", unreachable=unreachable,
                         message="Hay cubos, pero ninguno se puede agarrar ni separar empujando.")

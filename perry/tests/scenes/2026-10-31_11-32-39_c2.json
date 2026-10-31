@@ -1,0 +1,39 @@
+{
+ "source": "2026-10-31_11-32-39 ciclo 2",
+ "note": "fila de 3 azules con 2 amarillos detras al borde del alcance: debe empujar, no rendirse",
+ "expect": "push",
+ "expect_color": null,
+ "to": null,
+ "cubes": [
+  {
+   "color": "azul",
+   "x": 17.168,
+   "y": 2.82,
+   "angle": 25.75
+  },
+  {
+   "color": "azul",
+   "x": 18.058,
+   "y": 1.009,
+   "angle": 24.16
+  },
+  {
+   "color": "azul",
+   "x": 16.365,
+   "y": 4.68,
+   "angle": 21.46
+  },
+  {
+   "color": "amarillo",
+   "x": 18.585,
+   "y": 4.639,
+   "angle": 24.62
+  },
+  {
+   "color": "amarillo",
+   "x": 19.434,
+   "y": 2.863,
+   "angle": 24.62
+  }
+ ]
+}

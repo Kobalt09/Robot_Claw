@@ -168,7 +168,7 @@ def _slide(cubes, first, n, g):
     return [replace(o, x=o.x + n[0] * g.push, y=o.y + n[1] * g.push) if id(o) in moved else o for o in cubes], len(moved)
 
 
-def plan_push(cubes, g, reachable, point_ok=None):
+def plan_push(cubes, g, reachable, point_ok=None, cube_ok=None):
     """Si nada es agarrable, el empuje más simple que deja algún cubo agarrable (o None).
 
     reachable(cubo): si el cubo es candidato (para empujar y para agarrar después).
@@ -176,6 +176,7 @@ def plan_push(cubes, g, reachable, point_ok=None):
                      quedan los cubos empujados). Por defecto, igual que reachable.
     """
     point_ok = point_ok or reachable
+    cube_ok = cube_ok or point_ok   # dónde pueden quedar los cubos empujados (más estricto que la pinza)
     if choose_grasp(cubes, g, reachable) is not None:
         return None
     best, best_key = None, None
@@ -195,7 +196,10 @@ def plan_push(cubes, g, reachable, point_ok=None):
             travel = g.push + g.error + g.push_gap   # primero cierra la luz, después mueve el cubo g.push
             end = (start[0] + n[0] * travel, start[1] + n[1] * travel)
             predicted, n_moved = _slide(cubes, c, n, g)
-            moved_ok = all(point_ok(p) for p, o in zip(predicted, cubes) if p is not o)
+            # un cubo empujado debe quedar en lugar válido; si ya estaba fuera (perdido o al borde),
+            # alcanza con que no termine MÁS LEJOS de la base que antes
+            moved_ok = all(cube_ok(p) or (not cube_ok(o) and hypot(p.x, p.y) <= hypot(o.x, o.y))
+                           for p, o in zip(predicted, cubes) if p is not o)
             if not moved_ok or not point_ok(Cube("", *start, a)) or not point_ok(Cube("", *end, a)):
                 continue
             if choose_grasp(predicted, g, reachable) is not None:
