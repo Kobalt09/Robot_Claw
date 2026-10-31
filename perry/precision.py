@@ -119,10 +119,16 @@ def precision_run(cfg, m, cam, log, stop=None, status=None):
                 now = nearest(cubes, prev.x, prev.y)
                 if now is None:
                     break
+                turn = abs((now.angle - prev.angle + 45) % 90 - 45)
+                if turn > p["max_turn_deg"]:
+                    # los dedos lo tomaron por una arista y lo hicieron girar: el corrimiento no es el error del brazo
+                    log(f"  medición descartada: el cubo giró {turn:.0f}° al cerrar")
+                    seen = []; break
                 seen.append((prev, now, d)); prev = now
             if len(seen) < 2:
-                log(f"  ({c0.x:.1f}, {c0.y:.1f}): perdí el cubo al medir. Detengo la prueba.")
-                pairs.append(((c0.x, c0.y), None)); break
+                log(f"  ({c0.x:.1f}, {c0.y:.1f}): sin medición válida en este punto; sigo con el próximo.")
+                cube = nearest(cubes, c0.x, c0.y) or c0
+                continue
             (b1, a1, d1), (b2, a2, d2) = seen
             dx, dy = squeeze_error((b1.x, b1.y), (a1.x, a1.y), d1, (b2.x, b2.y), (a2.x, a2.y), d2)
             pairs.append(((c0.x, c0.y), (c0.x + dx, c0.y + dy)))

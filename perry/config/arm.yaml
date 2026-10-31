@@ -128,4 +128,5 @@ precision:
   points: [[13.0, 0.0], [16.0, 0.0], [17.5, 0.0], [16.0, 5.0], [16.0, -5.0]]   # 18,5 era demasiado al borde (31-10)
   threshold_cm: 0.5        # error cuadrático medio aceptable; más = recalibrar
   place_lift_us: 10        # al soltar, el hombro queda este tanto más alto que al agarrar (no aplastar)
+  max_turn_deg: 15         # si el cubo gira más que esto al cerrar, la medición se descarta
   lost_cm: 4.0             # si el cubo aparece más lejos que esto del punto, se da por perdido
