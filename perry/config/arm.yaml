@@ -44,10 +44,12 @@ gripper: {channel: 10, open: 750, closed: 1700, push_closed: 2350, min: 500, max
 camera:
   index: 0                 # en la PC de Ignacio cambia entre 0 y 1 según qué se conecte primero
   warmup_s: 2.0            # espera para que ajuste la exposición
-  # Homografía: 4 esquinas del rectángulo de la hoja milimetrada (en este orden: lejana izq.,
-  # lejana der., cercana der., cercana izq.) en píxeles y en cm (X hacia la zona, Y a la izquierda).
-  corners_px: [[236.3, 147.0], [398.0, 133.8], [405.5, 217.5], [244.5, 231.8]]
-  corners_cm: [[19.6, 8.25], [19.6, -8.25], [11.1, -8.25], [11.1, 8.25]]
+  # Homografía: 4 esquinas del AZUL de la zona (sin las cintas verdes), en este orden: lejana izq.,
+  # lejana der., cercana der., cercana izq.; en píxeles y en cm (X hacia la zona, Y a la izquierda).
+  # Los cm se midieron el 31-10 con la calibración de la milimetrada (precisión ~3 mm). Si mueven
+  # la cámara: solo cambian corners_px (las esquinas del azul en la imagen nueva).
+  corners_px: [[239.0, 164.0], [399.0, 156.0], [403.0, 251.0], [244.0, 260.0]]
+  corners_cm: [[21.47, 7.90], [21.19, -8.40], [11.48, -8.02], [11.77, 8.13]]
   zone: {x_min: 10.0, x_max: 21.0, y_abs: 9.5}   # solo se buscan cubos aquí (+1 cm de margen)
   height_cm: 70.0          # altura del lente sobre la mesa: corrige la paralaje (la cámara ve la cara
                            # de arriba del cubo y lo ve corrido hacia afuera; fuera del centro, 0,5–1 cm)
