@@ -162,8 +162,13 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, appro
                 pick(cfg, m, c, grasp_dir, check)
             except OutOfTable as e:
                 log(f"No se puede llegar: {e}. Lo ignoro."); ignored.append((c.x, c.y)); continue
+            # directo a la caja (antes se estacionaba para verificar: viaje de más sobre la caja verde)
+            check()
+            say(f"Ciclo {cycle}: llevando el cubo {c.color} a {container}")
+            drop(cfg, m, container)
+            # verificar CONTANDO con la cámara: el agarre salió si hay un cubo menos de ese color
             say(f"Ciclo {cycle}: verificando el agarre")
-            after, _ = look(cfg, m, cam, log, f"verificacion{cycle}")   # verificar CONTANDO
+            after, _ = look(cfg, m, cam, log, f"verificacion{cycle}")
             if not grab_succeeded(cubes, after, c):
                 # el mismo cubo = el intento anterior más cercano (un agarre fallido lo corre unos mm)
                 key = next((k for k in tries if hypot(k[0] - c.x, k[1] - c.y) < 2 * s["same_cube_cm"]), (c.x, c.y))
@@ -174,11 +179,7 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, appro
                     f"{sum(d.color == c.color for d in after)} cubo(s) {c.color}{where}.")
                 if tries[key] > s["retries"]:
                     log("Lo doy por perdido."); ignored.append((c.x, c.y))
-                g_ = cfg["gripper"]; m.set_us(g_["channel"], g_["open"]); m.wait()
                 continue
-            check()
-            say(f"Ciclo {cycle}: llevando el cubo {c.color} a {container}")
-            drop(cfg, m, container)
             done += 1
             pushes = 0   # el límite de empujes es por atasco: si se agarró algo, la situación cambió
             log(f"Cubo {c.color} soltado en {container}. Llevo {done}.")
