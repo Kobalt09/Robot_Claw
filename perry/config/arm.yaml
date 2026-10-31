@@ -21,7 +21,8 @@ joints:
   # base: bajar pulso = izquierda. Tiene ~7° de juego: se llega SIEMPRE desde abajo (pulso - backlash_us).
   # Calibrada por tramos con puntos tocados de verdad (20-10); no es lineal (~11 us/° a la derecha,
   # menos a la izquierda). -36.6° = esquina cercana derecha, +36.6° = esquina cercana izquierda.
-  base:   {channel: 0,  cal: [[-36.6, 1915], [0, 1504], [36.6, 1121]], min: 520, max: 2150, backlash_us: 100}
+  # 31-10: puntos -15/0/+15 corregidos con la prueba de precisión (la base se quedaba corta hasta 2,9° a la izquierda)
+  base:   {channel: 0,  cal: [[-36.6, 1915], [-15, 1672], [0, 1491], [15, 1317], [36.6, 1121]], min: 520, max: 2150, backlash_us: 100}
   # hombro/codo/muneca: la cal es PROVISORIA (fotos, ±3°). Para ir a un punto se usa la tabla `reach`.
   # hombro: bajar pulso = hacia adelante, ~6,5 us/° según las fotos de perfil del 20-10
   hombro: {channel: 2,  cal: [[110, 1500], [56, 1200]], min: 500, max: 2500}
