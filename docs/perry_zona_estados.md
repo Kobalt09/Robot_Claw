@@ -122,7 +122,32 @@ Propuesta:
 | Se cancela desde el panel | El brazo se estaciona y la zona se cierra hasta que alguien la abra | No |
 | Movieron la cámara | Las esquinas de la zona no coinciden: FALLA con aviso | No |
 
-## 7. Decisiones para tomar con los otros equipos
+## 7. Pedidos hacia los carros (sugerencias del equipo, 31-10)
+
+Perry no solo recibe: también puede **pedir**.
+
+| Pedido | Para qué | Cómo encaja |
+| --- | --- | --- |
+| **«Traigan solo estos colores»** (por ejemplo, solo azules) | Una ronda o prueba con colores específicos; o una caja llena | Un campo `colores_pedidos`. Perry ya sabe ignorar colores (`--to` y `containers`); los carros filtrarían qué recogen |
+| **«Dejen de traer»** | Zona llena, trabada o en falla | Ya cubierto: ZONA CERRADA. Perry retiene la llave |
+| **«Pueden volver a traer»** | Se despejó la zona | Perry suelta la llave (o una persona la reabre) |
+
+### Transporte: ¿ROS o la interfaz web de Perry?
+
+Sugerencia de un compañero: lo más simple sería **reusar el servidor web del panel** (`audit_web.py`) y
+exponer el estado y los pedidos en un puerto al que se conecten los carros (HTTP + JSON).
+
+| | ROS 2 (`/zone/*`, contrato de los carros) | HTTP del panel de Perry |
+| --- | --- | --- |
+| Ya hecho | Los carros ya lo programaron; Cristian, la parte de Perry (rama `mejoras-de-portabilidad`) | El servidor ya existe; faltan 3 o 4 rutas |
+| En la Pi de Perry | Necesita Docker (Debian 13 no tiene ROS) e imagen sin internet | Nada nuevo: ya corre hoy |
+| Frenado si Perry se cae | Incluido: sin latido por 2 s, los carros paran | Hay que programarlo en los carros (si no responde en N s, parar) |
+| Cambios en los carros | Ninguno | Un cliente HTTP en lugar del cliente ROS |
+
+**La máquina de estados de este documento sirve igual con cualquiera de los dos**: solo cambia cómo viaja
+«pido la llave» y «devuelvo la llave». Conviene decidirlo con los equipos de los carros y con Cristian.
+
+## 8. Decisiones para tomar con los otros equipos
 
 1. **¿El árbitro corre en el mismo proceso que el brazo, o aparte?** Recomendación: **aparte**. Si el
    brazo se cuelga, el árbitro sigue publicando y la zona queda cerrada con `perry`. Si el que se cae es el
@@ -140,7 +165,9 @@ Propuesta:
 7. **Red y hora:** la Pi de Perry no tiene internet ni reloj (hoy estaba atrasada unos 200 días). El
    contrato pide `chrony` entre las tres Pi.
 
-## 8. Qué se puede adelantar sin los carros
+8. **¿ROS o HTTP?** Ver la tabla de la sección 7.
+
+## 9. Qué se puede adelantar sin los carros
 
 - Separar el árbitro del ciclo del brazo, con un modo simulado: un script hace de «carro» que pide y
   devuelve la llave.
