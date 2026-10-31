@@ -213,7 +213,7 @@ def side_neighbor(color_b, gap=0.35):
 
 
 def test_axis_blocked_when_a_different_colour_cube_could_be_pinched_too():
-    a, b = side_neighbor("amarillo")
+    a, b = side_neighbor("amarillo", gap=0.0)       # pegado de costado
     g = _replace(G, error_lateral=0.2)
     assert not axis_is_free(a, [b], 0.0, g)        # dedos delante/detrás: abrazarían también a B
 
@@ -222,3 +222,12 @@ def test_same_colour_neighbour_may_be_pinched_too():
     a, b = side_neighbor("azul")
     g = _replace(G, error_lateral=0.2)
     assert axis_is_free(a, [b], 0.0, g)            # si se lleva dos azules, van a la misma caja
+
+
+def test_cube_with_other_colour_touching_one_face_is_grabbable_by_the_sides():
+    # 31-10: amarillo con un azul pegado a una cara (corrido 0,5 cm): agarrable por los costados
+    y = Cube("amarillo", 15.0, 0.0, 0)
+    b = Cube("azul", 15.0 + 1.95, 0.5, 0)
+    g = _replace(G, opening=4.1, error_lateral=0.1)
+    assert axis_is_free(y, [b], 90.0, g)           # dedos a los costados (cierran en Y)
+    assert not axis_is_free(y, [b], 0.0, g)        # por delante/detrás no: un dedo caería sobre el azul

@@ -97,8 +97,9 @@ def finger_boxes(c, direction, g):
 
 
 def _pinch_box(c, direction, g):
-    """Lo que quedaría entre los dedos al cerrar (con el error completo a lo ancho)."""
-    return _rect(c.x, c.y, direction, g.opening / 2 + g.finger_thick, g.finger_width / 2 + g.error)
+    """Lo que quedaría entre los dedos al cerrar (a lo ancho, con el mismo margen que los dedos)."""
+    lat = g.error if g.error_lateral is None else g.error_lateral
+    return _rect(c.x, c.y, direction, g.opening / 2 + g.finger_thick, g.finger_width / 2 + lat)
 
 
 def axis_is_free(c, others, direction, g, extra=0.0):
@@ -108,7 +109,8 @@ def axis_is_free(c, others, direction, g, extra=0.0):
     if any(_overlap(f, _square(o, g), g.eps) for f in fingers for o in others if o is not c):
         return False
     pinch = _pinch_box(c, direction, g)
-    return not any(o.color != c.color and _overlap(pinch, _square(o, g), g.eps) for o in others if o is not c)
+    touch = max(g.eps, 0.1)   # rozarse 1 mm no es atraparlo
+    return not any(o.color != c.color and _overlap(pinch, _square(o, g), touch) for o in others if o is not c)
 
 
 def axis_clearance(c, others, direction, g, cap=2.0):
