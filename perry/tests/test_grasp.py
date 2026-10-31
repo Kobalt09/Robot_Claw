@@ -169,3 +169,56 @@ def test_any_direction_push_still_solves_2x2():
 
 def test_no_push_needed_when_something_is_graspable():
     assert plan_push(row_x(3), G, ALWAYS) is None
+
+
+# --- 31-10: margen lateral, empujes perpendiculares primero, colores ---------------------------
+from dataclasses import replace as _replace  # noqa: E402
+
+
+def front_offset_case(color_b="azul"):
+    """Cubo A con un vecino B delante y corrido medio cubo de costado (esquina del ladrillo)."""
+    a = Cube("azul", 15.0, 0.0, 0)
+    b = Cube(color_b, 15.0 - 1.9 - 0.6, 2.25, 0)  # delante (hacia la base), con su esquina asomando
+    return a, b
+
+
+def test_lateral_margin_lets_a_finger_brush_past_a_corner():
+    a, b = front_offset_case()
+    strict = _replace(G, error_lateral=0.5)
+    loose = _replace(G, error_lateral=0.2)
+    assert not axis_is_free(a, [b], 0.0, strict)
+    assert axis_is_free(a, [b], 0.0, loose)
+
+
+def test_push_prefers_face_normals_over_diagonals():
+    plan = plan_push(block_2x2(), _replace(G, push_dir_step=30.0), ALWAYS)
+    dx, dy = plan.direction
+    assert abs(dx) < 1e-6 or abs(dy) < 1e-6
+
+
+def test_pusher_keeps_extra_gap_from_the_cube():
+    g = _replace(G, push_gap=0.4)
+    plan = plan_push(block_2x2(), g, ALWAYS)
+    c, (dx, dy) = plan.cube, plan.direction
+    back = (c.x - plan.start[0]) * dx + (c.y - plan.start[1]) * dy
+    assert back >= g.cube / 2 + g.finger_thick + g.error + 0.4 - 1e-6
+    travel = ((plan.end[0] - plan.start[0]) ** 2 + (plan.end[1] - plan.start[1]) ** 2) ** 0.5
+    assert travel == pytest.approx(g.push + g.error + 0.4)
+
+
+def side_neighbor(color_b, gap=0.35):
+    a = Cube("azul", 15.0, 0.0, 0)
+    b = Cube(color_b, 15.0, 1.9 + gap, 0)          # al costado, casi pegado
+    return a, b
+
+
+def test_axis_blocked_when_a_different_colour_cube_could_be_pinched_too():
+    a, b = side_neighbor("amarillo")
+    g = _replace(G, error_lateral=0.2)
+    assert not axis_is_free(a, [b], 0.0, g)        # dedos delante/detrás: abrazarían también a B
+
+
+def test_same_colour_neighbour_may_be_pinched_too():
+    a, b = side_neighbor("azul")
+    g = _replace(G, error_lateral=0.2)
+    assert axis_is_free(a, [b], 0.0, g)            # si se lleva dos azules, van a la misma caja

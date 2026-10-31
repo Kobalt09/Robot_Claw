@@ -38,6 +38,9 @@ class GraspCfg:
     w_giro: float = 0.3  # penalización por girar mucho la pinza
     w_r: float = 0.02    # penalización por distancia al eje
     push_dir_step: float = 0.0   # además de las 4 caras, probar empujes cada estos grados (0 = solo caras)
+    error_lateral: float = None  # margen a lo ANCHO de cada dedo (None = igual a error). Rozar una
+                                 # esquina vecina de costado no impide el agarre; caer encima, sí
+    push_gap: float = 0.0        # luz extra entre la pinza que empuja y el cubo al bajar
 
 
 @dataclass
@@ -82,7 +85,8 @@ def closing_dirs(c):
 def _fingers(c, direction, g, extra=0.0):
     inner = max(g.cube / 2, g.opening / 2 - g.error)
     outer = g.opening / 2 + g.finger_thick + g.error + extra
-    mid, half_u, half_v = (inner + outer) / 2, (outer - inner) / 2, g.finger_width / 2 + g.error + extra
+    lat = g.error if g.error_lateral is None else g.error_lateral
+    mid, half_u, half_v = (inner + outer) / 2, (outer - inner) / 2, g.finger_width / 2 + lat + extra
     u = (cos(radians(direction)), sin(radians(direction)))
     return [_rect(c.x + s * mid * u[0], c.y + s * mid * u[1], direction, half_u, half_v) for s in (1, -1)]
 
@@ -92,9 +96,19 @@ def finger_boxes(c, direction, g):
     return _fingers(c, direction, g)
 
 
+def _pinch_box(c, direction, g):
+    """Lo que quedaría entre los dedos al cerrar (con el error completo a lo ancho)."""
+    return _rect(c.x, c.y, direction, g.opening / 2 + g.finger_thick, g.finger_width / 2 + g.error)
+
+
 def axis_is_free(c, others, direction, g, extra=0.0):
+    """Libre si ningún dedo cae sobre otro cubo y si entre los dedos no puede quedar atrapado
+    un cubo de OTRO color (uno del mismo color sí: iría a la misma caja)."""
     fingers = _fingers(c, direction, g, extra)
-    return not any(_overlap(f, _square(o, g), g.eps) for f in fingers for o in others if o is not c)
+    if any(_overlap(f, _square(o, g), g.eps) for f in fingers for o in others if o is not c):
+        return False
+    pinch = _pinch_box(c, direction, g)
+    return not any(o.color != c.color and _overlap(pinch, _square(o, g), g.eps) for o in others if o is not c)
 
 
 def axis_clearance(c, others, direction, g, cap=2.0):
@@ -170,21 +184,22 @@ def plan_push(cubes, g, reachable, point_ok=None):
         for a in push_dirs(c, g):
             n = (cos(radians(a)), sin(radians(a)))
             t = radians(a - c.angle)    # distancia del centro al borde del cubo en esa dirección
-            back = g.cube / 2 * (abs(cos(t)) + abs(sin(t))) + half + g.error
+            diag = abs((a - c.angle) % 90) > 1e-6 and abs((a - c.angle) % 90 - 90) > 1e-6   # diagonal: último recurso
+            back = g.cube / 2 * (abs(cos(t)) + abs(sin(t))) + half + g.error + g.push_gap
             start = (c.x - n[0] * back, c.y - n[1] * back)
             pusher = _rect(start[0], start[1], a, half + g.error, g.finger_width / 2 + g.error)
             if any(_overlap(pusher, _square(o, g), g.eps) for o in cubes):
                 continue                    # no hay lugar para bajar la pinza de ese lado
-            travel = g.push + g.error       # primero cierra la luz, después mueve el cubo g.push
+            travel = g.push + g.error + g.push_gap   # primero cierra la luz, después mueve el cubo g.push
             end = (start[0] + n[0] * travel, start[1] + n[1] * travel)
             predicted, n_moved = _slide(cubes, c, n, g)
             moved_ok = all(point_ok(p) for p, o in zip(predicted, cubes) if p is not o)
             if not moved_ok or not point_ok(Cube("", *start, a)) or not point_ok(Cube("", *end, a)):
                 continue
             if choose_grasp(predicted, g, reachable) is not None:
-                key = (0, n_moved, hypot(*start))                    # ideal: deja algo agarrable
+                key = (0, diag, n_moved, hypot(*start))              # ideal: deja algo agarrable
             else:
-                key = (1, -_freedom(predicted, g, reachable), hypot(*start))   # mejor esfuerzo
+                key = (1, diag, -_freedom(predicted, g, reachable), hypot(*start))   # mejor esfuerzo
             if best_key is None or key < best_key:
                 best, best_key = PushPlan(c, n, start, end, predicted), key
     return best

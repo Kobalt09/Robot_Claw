@@ -40,11 +40,11 @@ gripper: {channel: 10, open: 750, closed: 1700, min: 500, max: 2500}
 
 # Cámara cenital. Si la mueven: py calibrate_camera.py (vuelve a marcar las 4 esquinas).
 camera:
-  index: 1                 # en la PC de Ignacio cambia entre 0 y 1 según qué se conecte primero
+  index: 0                 # en la PC de Ignacio cambia entre 0 y 1 según qué se conecte primero
   warmup_s: 2.0            # espera para que ajuste la exposición
   # Homografía: 4 esquinas del rectángulo de la hoja milimetrada (en este orden: lejana izq.,
   # lejana der., cercana der., cercana izq.) en píxeles y en cm (X hacia la zona, Y a la izquierda).
-  corners_px: [[246.9, 100.4], [411.5, 90.8], [417.7, 176.6], [253.1, 186.2]]
+  corners_px: [[236.3, 147.0], [398.0, 133.8], [405.5, 217.5], [244.5, 231.8]]
   corners_cm: [[19.6, 8.25], [19.6, -8.25], [11.1, -8.25], [11.1, 8.25]]
   zone: {x_min: 10.0, x_max: 21.0, y_abs: 9.5}   # solo se buscan cubos aquí (+1 cm de margen)
   height_cm: 70.0          # altura del lente sobre la mesa: corrige la paralaje (la cámara ve la cara
@@ -67,6 +67,8 @@ grasp:
                        # entera (con 3,0 los cubos se arrastraban entre sí y el 2x2 quedaba escalonado)
   w_giro: 0.3
   w_r: 0.02
+  error_lateral: 0.2   # margen a lo ancho de cada dedo (a lo largo sigue siendo error)
+  push_gap: 0.3        # la pinza que empuja baja 0,3 cm más lejos del cubo (no caerle encima)
   push_dir_step: 30   # empujar también en cualquier dirección (cada 30°), no solo perpendicular a las caras
 push_lift_us: 20       # al empujar, la pinza va este tanto (hombro) más alta que al agarrar
 push_step_cm: 0.5      # el empuje avanza de a estos cm
