@@ -178,7 +178,8 @@ class Handler(BaseHTTPRequestHandler):
             S.go.set()
             return self.send(b"")
         if self.path == "/stop":
-            S.stop.set(); S.status = "cancelando: termina el movimiento y estaciona"
+            if S.running:
+                S.stop.set(); S.status = "cancelando: termina el movimiento y estaciona"
             return self.send(b"")
         if self.path == "/corners":
             if S.running:

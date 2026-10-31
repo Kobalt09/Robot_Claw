@@ -78,7 +78,7 @@ sort:
   same_cube_cm: 1.5        # si tras agarrar hay un cubo a menos de esto del objetivo, el agarre falló
   retries: 1               # reintentos por cubo antes de darlo por perdido
   max_cycles: 12           # tope de vueltas del ciclo (seguridad)
-  max_pushes: 3            # tope de empujes por ronda
+  max_pushes: 3            # tope de empujes SEGUIDOS sin lograr agarrar nada (zona bloqueada)
   push_margin_r: 1.0       # un cubo empujado debe quedar a <= max_r - esto (en el borde la punta es imprecisa)
   log_dir: logs            # fotos y registro de cada corrida (dentro de perry/)
 

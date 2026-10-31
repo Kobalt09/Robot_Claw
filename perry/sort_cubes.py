@@ -135,7 +135,7 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, appro
             check()
             if dec.kind == "push":
                 if pushes >= s["max_pushes"]:
-                    log("Ya empujé el máximo permitido y sigue sin haber cubos agarrables. Me detengo.")
+                    log(f"Empujé {pushes} veces seguidas sin poder agarrar nada: ZONA BLOQUEADA. Me detengo.")
                     break
                 plan = dec.plan
                 dx, dy = plan.direction
@@ -180,6 +180,7 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, appro
             say(f"Ciclo {cycle}: llevando el cubo {c.color} a {container}")
             drop(cfg, m, container)
             done += 1
+            pushes = 0   # el límite de empujes es por atasco: si se agarró algo, la situación cambió
             log(f"Cubo {c.color} soltado en {container}. Llevo {done}.")
     except Cancelled:
         log("CANCELADO por el usuario: subo y estaciono el brazo.")
