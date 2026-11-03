@@ -47,6 +47,34 @@ def wait_still(grab, pause=0.3, tol=4.0, timeout=4.0):
         prev = cur
 
 
+def zone_blobs_cm2(frame, cfg):
+    """Áreas (cm², de mayor a menor) de lo que hay dentro del azul de la zona y no es fondo azul.
+
+    Cubos, la pala de un carro o el brazo: todo lo que tapa el azul. El azul se toma de las esquinas de la
+    homografía (camera.corners_px), sin un borde de settle.edge_px donde la cinta lo ensucia.
+    """
+    c, st = cfg["camera"], cfg["settle"]
+    zone = np.zeros(frame.shape[:2], np.uint8)
+    cv2.fillPoly(zone, [np.int32(c["corners_px"])], 255)
+    k = 2 * st["edge_px"] + 1
+    zone = cv2.erode(zone, np.ones((k, k), np.uint8))
+    hsv = cv2.cvtColor(cv2.GaussianBlur(frame, (5, 5), 0), cv2.COLOR_BGR2HSV)
+    lo, hi = c["zone_bg_hsv"]
+    bg = cv2.inRange(hsv, np.array(lo, np.uint8), np.array(hi, np.uint8))
+    fg = cv2.morphologyEx(cv2.bitwise_and(zone, cv2.bitwise_not(bg)), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    H = cv2.getPerspectiveTransform(np.float32(c["corners_px"]), np.float32(c["corners_cm"]))
+    areas = []
+    for cnt in cv2.findContours(fg, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]:
+        areas.append(float(cv2.contourArea(cv2.perspectiveTransform(np.float32(cnt), H))))
+    return sorted(areas, reverse=True)
+
+
+def zone_is_clear(frame, cfg):
+    """True si dentro de la zona no hay ningún objeto más grande que settle.big_object_cm2 (carro o brazo)."""
+    blobs = zone_blobs_cm2(frame, cfg)
+    return not blobs or blobs[0] < cfg["settle"]["big_object_cm2"]
+
+
 def parallax_correct(x, y, nadir, cam_height, obj_height):
     """Corrige la paralaje de un objeto de altura obj_height visto desde arriba.
 

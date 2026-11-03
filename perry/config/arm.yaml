@@ -59,6 +59,18 @@ camera:
     azul:     [[[109, 100, 50], [130, 255, 255]]]   # H desde 109: el fondo de la zona azul es H 103-104;
                                                    # los cubos azules, 113-124 (medido 31-10)
     amarillo: [[[18, 90, 90],  [35, 255, 255]]]
+  zone_bg_hsv: [[98, 150, 80], [108, 255, 255]]   # fondo de la zona azul (H 103-104): lo que no sea esto,
+                                                  # dentro del azul, es un objeto (cubo, pala, brazo)
+
+# ASENTANDO (docs/perry_zona_estados.md, sección 4): después de que un carro devuelve la llave, el brazo
+# no se mueve hasta que la zona está despejada (sin objeto grande) y quieta, y pasó min_s.
+settle:
+  min_s: 2.0               # piso: el cubo puede estar rodando todavía
+  max_s: 10.0              # si en este tiempo no se despeja (carro trabado), la zona se cierra (BLOCKED)
+  big_object_cm2: 20.0     # mancha más grande que esto = carro o brazo (cubo ~3,6; fila de 4 ~14,4).
+                           # PROVISORIO: medir con la pala real de Phineas y Ferb
+  edge_px: 3               # se ignora este borde del azul (la cinta verde y la línea negra lo ensucian)
+  still_tol: 4.0           # diferencia media entre dos cuadros seguidos para decir «quieta» (como wait_still)
 
 # Planificación de agarre con cubos agrupados (grasp.py). Medidas en cm.
 grasp:

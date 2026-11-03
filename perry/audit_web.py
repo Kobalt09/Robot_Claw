@@ -30,8 +30,9 @@ import yaml
 from audit import draw_plan
 from reach import ensure_parked
 from ros_node import start_ros_node, get_fleet_state
+from settle import Settler
 from sort_cubes import Log, open_arm, sort_loop
-from vision import TopCamera
+from vision import TopCamera, zone_is_clear
 from zone_arbiter import PerryState, ZoneArbiter
 
 YAML = HERE / "config" / "arm.yaml"
@@ -543,10 +544,50 @@ class S:
     arbiter = None
     ros_node = None
     last_blocked_check = 0.0
+    settle = None        # Settler activo mientras Perry está en ASENTANDO
+    prev_frame = None    # cuadro anterior, para saber si la escena está quieta
 
 
 def jpg(img):
     return cv2.imencode(".jpg", img)[1].tobytes()
+
+
+def fleet_step(now, frame, launch):
+    """Después de que un carro devuelve la llave: ASENTANDO y recién después el ciclo (launch()).
+
+    El árbitro queda en SCANNING (occupant = "perry"): los carros esperan afuera mientras tanto.
+    """
+    st = S.cfg["settle"]
+    still = S.prev_frame is not None and float(cv2.absdiff(S.prev_frame, frame).mean()) <= st["still_tol"]
+    S.prev_frame = frame
+    if S.arbiter.trigger_sort:
+        S.arbiter.consume_trigger_sort()
+        if not S.cfg.get("auto_sort_on_release", True):
+            pass
+        elif S.running:
+            S.log.append("[AUTO] Perry ya en marcha; atenderá el cubo en el siguiente ciclo.")
+        else:
+            S.settle = Settler(now, st["min_s"], st["max_s"])
+            S.status = "ASENTANDO: esperando zona despejada y quieta"
+            S.log.append("[ASENTANDO] Un carro devolvió la llave. Espero zona despejada y quieta antes de mover el brazo.")
+    if S.settle is None or S.running:
+        return
+    result = S.settle.update(now, clear=zone_is_clear(frame, S.cfg), still=still)
+    if result == "go":
+        S.settle = None
+        S.log.append("[AUTO] Zona despejada y quieta. Lanzando ciclo de clasificación...")
+        launch()
+    elif result == "blocked":
+        reason = S.settle.reason
+        S.settle = None
+        S.arbiter.set_state(PerryState.BLOCKED, carrying=False)
+        S.status = "ZONA CERRADA: " + reason
+        S.log.append(f"[ASENTANDO] {reason}. Zona cerrada (BLOCKED): revisar la mesa.")
+
+
+def blocked_can_reopen(frame, cubes):
+    """La zona bloqueada se reabre sola solo sin cubos Y sin objeto grande (un carro no se ve como cubo)."""
+    return len(cubes) == 0 and zone_is_clear(frame, S.cfg)
 
 
 def camera_loop():
@@ -568,18 +609,9 @@ def camera_loop():
                     if S.arbiter.tick():
                         S.log.append("[LEASE] El turno del carro venció (60s). Zona liberada.")
 
-                    # 2. Activación automática tras entrega (trigger_sort activado por /zone/release)
-                    if S.arbiter.trigger_sort:
-                        if S.cfg.get("auto_sort_on_release", True):
-                            if not S.running:
-                                S.arbiter.consume_trigger_sort()
-                                S.log.append("[AUTO] Cubo entregado por carro. Lanzando ciclo de clasificación...")
-                                threading.Thread(target=run_cycle, args=("run",), daemon=True).start()
-                            else:
-                                S.arbiter.consume_trigger_sort()
-                                S.log.append("[AUTO] Perry ya en marcha; atenderá el cubo en el siguiente ciclo.")
-                        else:
-                            S.arbiter.consume_trigger_sort()
+                    # 2. Tras una entrega (/zone/release): ASENTANDO y recién después el ciclo
+                    fleet_step(time.time(), cam.last_frame,
+                               launch=lambda: threading.Thread(target=run_cycle, args=("run",), daemon=True).start())
 
                     # 3. Auto-recuperación de estado BLOCKED cada blocked_check_interval_s (3.0 s)
                     if not S.running and S.arbiter.state == PerryState.BLOCKED:
@@ -587,8 +619,8 @@ def camera_loop():
                         interval = float(S.cfg.get("blocked_check_interval_s", 3.0))
                         if now - S.last_blocked_check >= interval:
                             S.last_blocked_check = now
-                            if len(cubes) == 0:
-                                S.log.append("[AUTO-DESPEJE] 0 cubos en zona bloqueada. Verificando reposo físico...")
+                            if blocked_can_reopen(cam.last_frame, cubes):
+                                S.log.append("[AUTO-DESPEJE] 0 cubos y sin objetos grandes en zona bloqueada. Verificando reposo físico...")
                                 try:
                                     m_check = open_arm(cfg)
                                     try:
