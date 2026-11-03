@@ -18,6 +18,9 @@ Tres robots:
 
 ## Decisiones vigentes (13–14 de octubre de 2026)
 
+> **Cambió el 02-11-2026:** la comunicación entre robots es **ROS 2 Lyrical** (contrato `multirobot_interfaces`
+> de los carros), no MQTT; en la Pi de Perry corre en **Docker**. Ver la sesión del 02-11 más abajo.
+
 - Raspberry Pi con **Raspbian de 64 bits** (ya configuradas, con OpenCV y pyserial).
 - **Sin ROS 2, sin Docker, sin MoveIt.** Comunicación entre robots por **MQTT** (mosquitto + paho-mqtt), todavía sin implementar.
 - **Python** en todo. El código C++ de `prueba/` se va a retirar (incluye un ejecutable x86 que no corre en la Pi).
@@ -128,6 +131,18 @@ Hecho: medidas reales; `perry/` escrito; **primera sesión con el brazo real (14
 - **Arreglo:** un empuje en cadena dejó un cubo a 11,7 cm (fuera de alcance; el previsto era 12,2). Ahora los cubos empujados quedan a `push_margin_r` de **los dos** bordes del alcance; test de invariante sobre todas las escenas.
 - **Comunicación con los carros:** su contrato es ROS 2 (`multirobot_interfaces`: llave de la zona `/zone/request`, `/zone/release`, latido `/zone/occupant`), pero **hoy ninguna Pi tiene ROS** y los carros corren scripts de laboratorio sin árbitro. Cristian hizo la parte ROS de Perry con Docker en la rama `mejoras-de-portabilidad` (Jazzy; los carros van a Lyrical). **Propuesta enviada:** el mismo contrato por HTTP desde la Pi de Perry (`docs/comunicacion_flota.md`), con comportamiento definido en `docs/perry_zona_estados.md` (una sola llave para carros y brazo; Perry cierra la zona quedándose con la llave; colores pedidos). Foto de la franja de entrega: `docs/diagramas/zona_franja_entrega.jpg`.
 - **Siguiente:** respuesta de los equipos a las 7 decisiones de la propuesta; árbitro HTTP como proceso aparte con tests y un «carro simulado»; detector de «zona despejada» (objeto grande o ArUco); estado ZONA CERRADA en el panel; red común con IP fija para Perry.
+
+**Sesión del 02-11-2026: integración con la flota (ROS 2)** (rama `feat/perry-integracion`)
+
+- **Decisión de los equipos (plan de Samuel):** ROS 2 con `multirobot_interfaces`, no HTTP. Las interfaces son idénticas byte a byte en Phineas, Ferb (`feature/tools-fleet-bridge`) y Perry. Ferb recoge solo amarillos y Phineas solo azules. Sin ArUco ni poses: nadie publica `/ferb/pose` ni `/phineas/pose`.
+- **Rama de Cristian integrada** (`mejoras-de-portabilidad` → `feat/perry-integracion`): árbitro (`zone_arbiter.py`), nodo ROS (`ros_node.py`, arranca dentro de `audit_web.py` si hay `rclpy`) y panel nuevo. Se mantuvo nuestro orden del ciclo (soltar y después verificar).
+- **ASENTANDO** (`settle.py` + `vision.zone_is_clear`): tras un `/zone/release`, el brazo no se mueve hasta 2 s, escena quieta y ninguna mancha > 20 cm² en el azul (cubo ~4, brazo 61). En 10 s sin despejarse: BLOCKED. El umbral de 20 cm² es **provisorio**: medirlo con la pala real.
+- **Turnos:** `gate_closed` con STOP, BLOCKED o 2 cubos alcanzables esperando (`fleet.full_cubes`); cola de llegada (`fleet.queue_ttl_s`); Perry cede la zona tras un cubo si un carro espera. Ojo: en `RobotState`, `gate_closed` es la compuerta de la pala; en `/perry/state` significa «zona cerrada».
+- **Panel:** selector de color (solo azul / solo amarillo) para Iniciar y Paso a paso; los cubos de otro color quedan como obstáculos y no traban la zona.
+- **Docker:** `ros:lyrical-ros-base`; la imagen se construye en la PC para arm64 (`bash docker/save_image.sh`) y se lleva por cable (`bash docker/deploy_pi.sh`). Ver `docker/README.md`.
+- **Informe y defensa:** `docs/informe/` (PDF del informe preliminar y chuleta; se regeneran con `figuras.py` y `generar_pdf.py`). Lo que falta va en rojo como `[DATO]`.
+- **Sin carros, el brazo funciona solo** desde el panel (nativo o en Docker). Para la demo, el plan de respaldo es el panel nativo.
+- **Siguiente (en el laboratorio):** cargar la imagen en la Pi y probar `ros2 topic echo /zone/occupant` desde un carro; red común con IP fija; medir el umbral con la pala; completar los `[DATO]` del informe.
 
 Siguiente (plan original, ya superado en parte):
 
