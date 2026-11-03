@@ -1,6 +1,6 @@
 # Dockerfile para Perry (Robot_Claw)
 # Entorno de ROS 2 para la Raspberry Pi y PCs de desarrollo
-ARG BASE_IMAGE=ros:jazzy-ros-base
+ARG BASE_IMAGE=ros:lyrical-ros-base
 FROM ${BASE_IMAGE}
 
 ENV DEBIAN_FRONTEND=noninteractive
