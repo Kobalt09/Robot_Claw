@@ -28,7 +28,7 @@ import yaml
 from audit import draw_plan
 from grasp import GraspCfg, grab_succeeded
 from maestro import Maestro
-from planner import decide
+from planner import decide, reachable
 from replay import cube_dict
 from reach import pulses_at, move_via_top, lower_shoulder, push, OutOfTable, ensure_parked
 from vision import TopCamera, save_image
@@ -170,6 +170,7 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, appro
 
     ignored, tries, done, pushes, fails_in_a_row = [], {}, 0, 0, 0
     was_cancelled = False
+    yielded = False       # Perry soltó la zona antes de terminar para que entre un carro
     last_cubes = []
 
     try:
@@ -180,6 +181,8 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, appro
             say(f"Ciclo {cycle}: mirando la zona")
             cubes, img = look(cfg, m, cam, log, f"vista{cycle}")   # TODOS: también son obstáculos
             last_cubes = cubes
+            if arbiter:
+                arbiter.set_zone_cubes(sum(reachable(cfg, k) for k in cubes))
             dec = decide(cfg, cubes, ignored, to)
             log.image(f"plan{cycle}", draw_plan(img, cam, cfg, cubes, dec))   # para auditar
             rec = {"cycle": cycle, "event": "decision", "kind": dec.kind, "to": to, "message": dec.message,
@@ -267,6 +270,14 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, appro
             if arbiter:
                 arbiter.increment_sorted()
             log(f"Cubo {c.color} soltado en {container}. Llevo {done}.")
+            if arbiter:
+                left = sum(reachable(cfg, k) for k in after)
+                arbiter.set_zone_cubes(left)
+                # turnos: un carro espera y en la mesa quedan pocos cubos -> que entre a entregar
+                if left < arbiter.full_cubes and arbiter.cars_waiting():
+                    log(f"Un carro espera la zona y quedan {left} cubo(s): cedo la zona y sigo después.")
+                    yielded = True
+                    break
     except Cancelled:
         was_cancelled = True
         log("CANCELADO por el usuario: subo y estaciono el brazo.")
@@ -283,6 +294,8 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, appro
             arbiter.set_carrying(False)
             if was_cancelled or not parked:
                 arbiter.set_state(PerryState.STOP, carrying=False, parked_ok=parked)
+            elif yielded:
+                arbiter.set_state(PerryState.FREE, carrying=False, parked_ok=parked)
             elif len(last_cubes) > 0:
                 arbiter.set_state(PerryState.BLOCKED, carrying=False, parked_ok=parked)
             else:

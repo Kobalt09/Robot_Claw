@@ -151,4 +151,7 @@ precision:
 
 # Control y automatización de flota (Fase 5)
 auto_sort_on_release: true     # inicia ciclo automáticamente cuando un carro llama /zone/release
+fleet:                         # turnos de la zona (plan de integración del 02-11, puntos 5.2 y 5.4)
+  full_cubes: 2                # con tantos cubos alcanzables esperando: zona llena, gate_closed («no traigan»)
+  queue_ttl_s: 3.0             # un carro que deja de pedir la llave este tiempo pierde su lugar en la cola
 blocked_check_interval_s: 3.0  # tiempo (segundos) entre chequeos automáticos de zona bloqueada

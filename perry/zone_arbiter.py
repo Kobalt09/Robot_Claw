@@ -24,8 +24,16 @@ class PerryState(str, Enum):
 class ZoneArbiter:
     """Árbitro thread-safe para la gestión de la zona compartida y estado de Perry."""
 
-    def __init__(self, lease_duration_s: float = 60.0, initial_state: PerryState = PerryState.STOP):
+    def __init__(self, lease_duration_s: float = 60.0, initial_state: PerryState = PerryState.STOP,
+                 full_cubes: int = 2, queue_ttl_s: float = 3.0):
+        """full_cubes: con tantos cubos alcanzables esperando, la zona está llena (gate_closed).
+        queue_ttl_s: un carro que no vuelve a pedir la llave en este tiempo pierde su lugar en la cola.
+        (Los valores reales vienen de arm.yaml: fleet.)"""
         self._lock = threading.Lock()
+        self._full_cubes = int(full_cubes)
+        self._queue_ttl_s = float(queue_ttl_s)
+        self._zone_cubes: int = 0
+        self._queue: list = []   # [robot, último pedido], en orden de llegada
         self._state: PerryState = initial_state
         self._holder: str = ""
         self._lease_expires_at: float = 0.0
@@ -103,6 +111,42 @@ class ZoneArbiter:
                 return self._holder
             return "perry"
 
+    @property
+    def full_cubes(self) -> int:
+        return self._full_cubes
+
+    @property
+    def gate_closed(self) -> bool:
+        """«No traigan más cubos» (/perry/state.gate_closed): zona bloqueada, detenida o llena."""
+        with self._lock:
+            return self._gate_closed_locked()
+
+    def _gate_closed_locked(self) -> bool:
+        return self._state in (PerryState.STOP, PerryState.BLOCKED) or self._zone_cubes >= self._full_cubes
+
+    def set_zone_cubes(self, n: int) -> None:
+        """Cubos alcanzables que esperan en la zona (lo actualizan la cámara y el ciclo del brazo)."""
+        with self._lock:
+            self._zone_cubes = int(n)
+
+    def cars_waiting(self, now: Optional[float] = None) -> bool:
+        """True si algún carro pidió la llave hace menos de queue_ttl_s y no la tiene."""
+        if now is None:
+            now = time.time()
+        with self._lock:
+            return bool(self._fresh_queue(now))
+
+    def _fresh_queue(self, now: float) -> list:
+        self._queue = [e for e in self._queue if now - e[1] <= self._queue_ttl_s]
+        return self._queue
+
+    def _enqueue(self, robot: str, now: float) -> None:
+        for e in self._queue:
+            if e[0] == robot:
+                e[1] = now
+                return
+        self._queue.append([robot, now])
+
     # --- Operaciones de lease de la zona ---
 
     def request_zone(self, robot: str, now: Optional[float] = None) -> Tuple[bool, str, float]:
@@ -126,14 +170,20 @@ class ZoneArbiter:
                 self._lease_expires_at = now + self._lease_duration_s
                 return True, self._holder, self._lease_duration_s
 
-            # Caso 2: Nueva concesión si está libre y verificado en reposo
-            if self._state == PerryState.FREE and self._parked_ok:
+            # Caso 2: Nueva concesión si está libre, verificado en reposo, la zona no está llena
+            # y no hay otro carro que la pidió antes (cola de llegada)
+            queue = self._fresh_queue(now)
+            first = queue[0][0] if queue else robot
+            if (self._state == PerryState.FREE and self._parked_ok and not self._gate_closed_locked()
+                    and first == robot):
+                self._queue = [e for e in queue if e[0] != robot]
                 self._state = PerryState.RECEIVING
                 self._holder = robot
                 self._lease_expires_at = now + self._lease_duration_s
                 return True, self._holder, self._lease_duration_s
 
-            # Caso 3: Rechazado
+            # Caso 3: Rechazado: queda (o sigue) en la cola de llegada
+            self._enqueue(robot, now)
             current_holder = self._holder if self._state == PerryState.RECEIVING else "perry"
             remaining = max(0.0, self._lease_expires_at - now) if self._state == PerryState.RECEIVING else 0.0
             return False, current_holder, remaining
@@ -245,4 +295,7 @@ class ZoneArbiter:
                 "parked_ok": self._parked_ok,
                 "trigger_sort": self._trigger_sort,
                 "last_delivery_color": self._last_delivery_color,
+                "gate_closed": self._gate_closed_locked(),
+                "zone_cubes": self._zone_cubes,
+                "queue": [e[0] for e in self._fresh_queue(now)],
             }

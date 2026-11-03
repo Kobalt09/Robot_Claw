@@ -29,6 +29,7 @@ import yaml
 
 from audit import draw_plan
 from reach import ensure_parked
+from planner import reachable
 from ros_node import start_ros_node, get_fleet_state
 from settle import Settler
 from sort_cubes import Log, open_arm, sort_loop
@@ -609,6 +610,10 @@ def camera_loop():
                     if S.arbiter.tick():
                         S.log.append("[LEASE] El turno del carro venció (60s). Zona liberada.")
 
+                    # zona llena: cubos alcanzables esperando (no mientras un carro mete la pala: la ve como cubos)
+                    if not S.running and S.settle is None and S.arbiter.state != PerryState.RECEIVING:
+                        S.arbiter.set_zone_cubes(sum(reachable(cfg, k) for k in cubes))
+
                     # 2. Tras una entrega (/zone/release): ASENTANDO y recién después el ciclo
                     fleet_step(time.time(), cam.last_frame,
                                launch=lambda: threading.Thread(target=run_cycle, args=("run",), daemon=True).start())
@@ -796,7 +801,8 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     S.cfg = yaml.safe_load(YAML.read_text(encoding="utf-8"))
-    S.arbiter = ZoneArbiter(initial_state=PerryState.STOP)
+    fl = S.cfg["fleet"]
+    S.arbiter = ZoneArbiter(initial_state=PerryState.STOP, full_cubes=fl["full_cubes"], queue_ttl_s=fl["queue_ttl_s"])
 
     # Iniciar nodo ROS 2 en background si rclpy está disponible
     S.ros_node = start_ros_node(S.arbiter)

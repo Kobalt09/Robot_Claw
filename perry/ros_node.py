@@ -136,7 +136,9 @@ if HAS_RCLPY:
                 st_msg.state = self.arbiter.state.value
                 st_msg.carrying = bool(self.arbiter.carrying)
                 st_msg.delivered = int(self.arbiter.sorted_total)
-                st_msg.gate_closed = bool(self.arbiter.state == PerryState.BLOCKED)
+                # «no traigan más» (zona bloqueada, detenida por el operador o llena). Ojo: en los carros
+                # este campo es la compuerta de su pala; en /perry/state significa la zona cerrada.
+                st_msg.gate_closed = bool(self.arbiter.gate_closed)
                 self._state_pub.publish(st_msg)
 
         def _tick_loop(self):
