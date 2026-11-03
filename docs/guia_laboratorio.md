@@ -62,7 +62,13 @@ bash docker/deploy_pi.sh
 ```
 
 Copia el código, carga la imagen por el cable si la Pi no la tiene y levanta el contenedor. La primera vez
-tarda varios minutos en pasar la imagen. Si la Pi tiene internet, usá `BUILD=1 bash docker/deploy_pi.sh`.
+tarda varios minutos en pasar la imagen (664 MB), y el **primer arranque** tarda unos minutos más porque compila
+`multirobot_interfaces` (en la PC, emulando la Pi, fueron 11 min). No está colgado: se ve con
+`docker compose logs -f`, y está listo cuando aparece `Panel web de Perry iniciado`. Si la Pi tiene internet,
+usá `BUILD=1 bash docker/deploy_pi.sh`.
+
+Comprobado en la PC el 03-11 emulando la Pi: el nodo publica `/zone/occupant` y `/perry/state`, niega la
+llave con la zona cerrada, la da con la zona libre y cuenta las entregas.
 
 ### B. Solo el brazo, sin ROS (el plan de respaldo, ya probado)
 
