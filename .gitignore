@@ -2,3 +2,10 @@ __pycache__/
 *.pyc
 perry/logs/
 perry/vision_test.jpg
+
+# imagen de Docker guardada para llevar a la Pi por el cable (docker/save_image.sh): ~1 GB
+docker/*.tar.gz
+# compilación de multirobot_interfaces dentro del contenedor
+/build/
+/install/
+/log/

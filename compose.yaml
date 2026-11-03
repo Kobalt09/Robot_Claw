@@ -1,5 +1,6 @@
 services:
   perry:
+    image: perry_claw:lyrical   # nombre fijo: en la Pi sin internet se carga con docker load (docker/README.md)
     build:
       context: .
       dockerfile: docker/Dockerfile

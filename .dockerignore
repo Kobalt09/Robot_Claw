@@ -1,0 +1,8 @@
+# El Dockerfile solo copia docker/entrypoint.sh: el código se monta como volumen (compose.yaml)
+.git
+perry/logs
+docker/*.tar.gz
+build
+install
+log
+**/__pycache__
