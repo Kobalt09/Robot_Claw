@@ -39,19 +39,23 @@ class Decision:
     message: str = ""
 
 
-def decide(cfg, cubes, ignored=(), to=None):
-    """Decide la próxima acción. ignored: posiciones (x, y) que ya no se intentan."""
+def decide(cfg, cubes, ignored=(), to=None, colors=None):
+    """Decide la próxima acción. ignored: posiciones (x, y) que ya no se intentan.
+    colors: si se da, solo se agarran (o empujan) cubos de esos colores; los demás quedan como obstáculos."""
     s, g = cfg["sort"], GraspCfg(**cfg["grasp"])
 
     def is_ignored(c):
         return any(hypot(c.x - x, c.y - y) <= s["same_cube_cm"] for x, y in ignored)
 
-    def can_try(c):   # candidato: alcanzable, no ignorado y con contenedor para su color
-        return reachable(cfg, c) and not is_ignored(c) and bool(to or cfg["containers"].get(c.color))
+    def can_try(c):   # candidato: alcanzable, no ignorado, del color pedido y con contenedor para su color
+        return (reachable(cfg, c) and not is_ignored(c) and (not colors or c.color in colors)
+                and bool(to or cfg["containers"].get(c.color)))
 
-    unreachable = [c for c in cubes if not is_ignored(c) and not reachable(cfg, c)]
+    unreachable = [c for c in cubes if not is_ignored(c) and not reachable(cfg, c)
+                   and (not colors or c.color in colors)]
     if not any(can_try(c) for c in cubes):
-        return Decision("none", unreachable=unreachable, message="No quedan cubos alcanzables.")
+        which = f" de color {' o '.join(colors)}" if colors else ""
+        return Decision("none", unreachable=unreachable, message=f"No quedan cubos{which} alcanzables.")
     choice = choose_grasp(cubes, g, can_try)
     if choice:
         c, d = choice

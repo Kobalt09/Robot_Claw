@@ -357,6 +357,11 @@ PAGE = """<!doctype html>
     <button class="btn-green" onclick="postAction('/enable_zone', 'Habilitando zona...')">&#10004; Habilitar Zona (FREE)</button>
     <button class="btn-red" onclick="postAction('/block_zone', 'Bloqueando zona...')">&#9940; Bloquear Zona (STOP)</button>
     <div style="width: 1px; height: 28px; background: var(--card-border); margin: 0 4px;"></div>
+    <select id="color" title="Qué cubos clasificar en el próximo Iniciar o Paso a paso"
+            style="height: 34px; border-radius: 6px; padding: 0 8px;">
+      <option value="">Todos los colores</option>
+      {{COLOR_OPTIONS}}
+    </select>
     <button class="btn-blue" onclick="start('run')">&#9654; Iniciar</button>
     <button class="btn-dark" onclick="start('amarillo')">&#9654; Todo al Amarillo</button>
     <button class="btn-outline" onclick="start('look')">&#128065; Solo Mirar</button>
@@ -434,8 +439,9 @@ PAGE = """<!doctype html>
     }
 
     function start(mode) {
-      showToast("Iniciando: " + mode);
-      fetch('/start', { method: 'POST', body: mode }).then(r => r.text()).then(x => {
+      const color = document.getElementById('color').value;
+      showToast("Iniciando: " + mode + (color ? " (solo " + color + ")" : ""));
+      fetch('/start', { method: 'POST', body: mode + '|' + color }).then(r => r.text()).then(x => {
         if (x) showToast(x);
       }).catch(err => showToast("Error: " + err));
     }
@@ -658,8 +664,20 @@ def wait_approval():
         S.waiting = False
 
 
-def run_cycle(mode):
+def parse_start(body):
+    """Cuerpo de /start: "modo|color" (color vacío = todos). Devuelve (modo, [colores] o None)."""
+    mode, _, color = body.partition("|")
+    return mode, ([color] if color else None)
+
+
+def color_options(cfg):
+    """Las opciones del selector de color salen de los colores de arm.yaml (camera.colors)."""
+    return "\n".join(f'<option value="{c}">Solo {c}</option>' for c in cfg["camera"]["colors"])
+
+
+def run_cycle(body):
     """Ejecuta el ciclo de clasificación en un hilo separado."""
+    mode, colors = parse_start(body)
     S.running = True
     S.status = "arrancando"
     S.stop.clear()
@@ -680,7 +698,8 @@ def run_cycle(mode):
             stop=S.stop,
             status=lambda t: setattr(S, "status", t),
             approve=wait_approval if mode == "step" else None,
-            arbiter=S.arbiter
+            arbiter=S.arbiter,
+            colors=colors,
         )
     except Exception as e:
         S.log.append(f"[ERROR] {e}")
@@ -720,7 +739,7 @@ class Handler(BaseHTTPRequestHandler):
                 "fleet": get_fleet_state(),
             }
             return self.send(json.dumps(payload).encode(), "application/json")
-        self.send(PAGE.encode("utf-8"))
+        self.send(PAGE.replace("{{COLOR_OPTIONS}}", color_options(S.cfg)).encode("utf-8"))
 
     def do_POST(self):
         body = self.rfile.read(int(self.headers.get("Content-Length", 0) or 0)).decode()

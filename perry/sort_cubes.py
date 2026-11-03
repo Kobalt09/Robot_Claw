@@ -135,11 +135,13 @@ def drop(cfg, m, container):
     go_up(cfg, m)
 
 
-def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, approve=None, arbiter=None):
+def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, approve=None, arbiter=None,
+              colors=None):
     """El ciclo completo. stop: threading.Event para cancelar; status(texto): estado actual.
     approve(texto): si se da, se llama antes de cada acción y bloquea hasta que el usuario la
     apruebe (modo paso a paso); si mientras tanto se cancela, el ciclo termina.
     arbiter: instancia opcional de ZoneArbiter para coordinar el estado de Perry y la zona.
+    colors: si se da (por ejemplo ["azul"]), solo se clasifican esos colores; el resto queda en la mesa.
     """
     s = cfg["sort"]
     gcfg = GraspCfg(**cfg["grasp"])
@@ -183,7 +185,7 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, appro
             last_cubes = cubes
             if arbiter:
                 arbiter.set_zone_cubes(sum(reachable(cfg, k) for k in cubes))
-            dec = decide(cfg, cubes, ignored, to)
+            dec = decide(cfg, cubes, ignored, to, colors)
             log.image(f"plan{cycle}", draw_plan(img, cam, cfg, cubes, dec))   # para auditar
             rec = {"cycle": cycle, "event": "decision", "kind": dec.kind, "to": to, "message": dec.message,
                    "cubes": [cube_dict(c) for c in cubes]}
@@ -296,7 +298,9 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, appro
                 arbiter.set_state(PerryState.STOP, carrying=False, parked_ok=parked)
             elif yielded:
                 arbiter.set_state(PerryState.FREE, carrying=False, parked_ok=parked)
-            elif len(last_cubes) > 0:
+            elif any(not colors or k.color in colors for k in last_cubes):
+                # quedan cubos que había que clasificar (fuera de alcance o sin agarre): zona trabada.
+                # Los de otros colores, si el operador eligió uno, quedan por elección: no la traban.
                 arbiter.set_state(PerryState.BLOCKED, carrying=False, parked_ok=parked)
             else:
                 arbiter.set_state(PerryState.FREE, carrying=False, parked_ok=parked)
