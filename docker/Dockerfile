@@ -23,7 +23,8 @@ WORKDIR /ws
 
 # Script de entrada para compilación de interfaces y arranque
 COPY docker/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# sin CRLF: si el script viene de una copia en Windows, bash dentro de Linux no lo puede ejecutar
+RUN tr -d '\015' < /entrypoint.sh > /tmp/e && mv /tmp/e /entrypoint.sh && chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["python3", "audit_web.py"]

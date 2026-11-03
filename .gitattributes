@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# los scripts de bash se rompen con CRLF (Docker y Git Bash): siempre LF
+*.sh text eol=lf
