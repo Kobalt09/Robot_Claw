@@ -30,8 +30,9 @@ from grasp import GraspCfg, grab_succeeded
 from maestro import Maestro
 from planner import decide
 from replay import cube_dict
-from reach import pulses_at, move_via_top, lower_shoulder, push, OutOfTable
+from reach import pulses_at, move_via_top, lower_shoulder, push, OutOfTable, ensure_parked
 from vision import TopCamera, save_image
+from zone_arbiter import PerryState, ZoneArbiter
 
 HERE = Path(__file__).parent
 
@@ -70,6 +71,18 @@ class Log:
 
 
 def open_arm(cfg):
+    if os.environ.get("PERRY_MOCK_ARM") == "1":
+        from unittest.mock import MagicMock
+        m = MagicMock()
+        m.is_moving.return_value = False
+        m.get_us.side_effect = lambda ch: (
+            cfg["travel"]["hombro"] if ch == cfg["joints"]["hombro"]["channel"] else
+            cfg["travel"]["codo"] if ch == cfg["joints"]["codo"]["channel"] else
+            cfg["travel"]["muneca"] if ch == cfg["joints"]["muneca"]["channel"] else
+            cfg["poses"]["vista"]["base"] if ch == cfg["joints"]["base"]["channel"] else
+            1447
+        )
+        return m
     limits = {j["channel"]: (j["min"], j["max"]) for j in cfg["joints"].values()}
     g = cfg["gripper"]
     limits[g["channel"]] = (g["min"], g["max"])
@@ -122,25 +135,51 @@ def drop(cfg, m, container):
     go_up(cfg, m)
 
 
-def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, approve=None):
+def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, approve=None, arbiter=None):
     """El ciclo completo. stop: threading.Event para cancelar; status(texto): estado actual.
     approve(texto): si se da, se llama antes de cada acción y bloquea hasta que el usuario la
-    apruebe (modo paso a paso); si mientras tanto se cancela, el ciclo termina."""
+    apruebe (modo paso a paso); si mientras tanto se cancela, el ciclo termina.
+    arbiter: instancia opcional de ZoneArbiter para coordinar el estado de Perry y la zona.
+    """
     s = cfg["sort"]
     gcfg = GraspCfg(**cfg["grasp"])
     stop = stop or threading.Event()
     say = status or (lambda t: None)
+
+    # 1. Antes de iniciar el bucle: verificar que no haya un carro con lease activo
+    if arbiter is not None and arbiter.state == PerryState.RECEIVING:
+        log("Hay un carro recolector en la zona (RECEIVING). No se puede iniciar el ciclo.")
+        say("Zona ocupada por carro")
+        return 0
+
+    # Verificar que el brazo esté energizado y estacionado en reposo
+    parked = ensure_parked(m, cfg) if run else True
+    if not parked:
+        log("[ERROR] El brazo no está energizado o falló al estacionarse en reposo (vista).")
+        say("Error: reposo no verificado")
+        if arbiter:
+            arbiter.set_state(PerryState.STOP, carrying=False, parked_ok=False)
+        return 0
+
+    if arbiter:
+        arbiter.set_parked_ok(True)
 
     def check():
         if stop.is_set():
             raise Cancelled()
 
     ignored, tries, done, pushes, fails_in_a_row = [], {}, 0, 0, 0
+    was_cancelled = False
+    last_cubes = []
+
     try:
         for cycle in range(1, s["max_cycles"] + 1):
             check()
+            if arbiter:
+                arbiter.set_state(PerryState.SCANNING, carrying=False)
             say(f"Ciclo {cycle}: mirando la zona")
             cubes, img = look(cfg, m, cam, log, f"vista{cycle}")   # TODOS: también son obstáculos
+            last_cubes = cubes
             dec = decide(cfg, cubes, ignored, to)
             log.image(f"plan{cycle}", draw_plan(img, cam, cfg, cubes, dec))   # para auditar
             rec = {"cycle": cycle, "event": "decision", "kind": dec.kind, "to": to, "message": dec.message,
@@ -172,6 +211,8 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, appro
                 if approve:
                     say(f"ESPERANDO TU APROBACION: {dec.message}"); approve(); check()
                 say(f"Ciclo {cycle}: empujando un grupo")
+                if arbiter:
+                    arbiter.set_state(PerryState.PICKING, carrying=False)
                 push(m, cfg, plan.start, plan.end, degrees(atan2(dy, dx)))
                 pushes += 1
                 continue
@@ -184,6 +225,8 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, appro
             if approve:
                 say(f"ESPERANDO TU APROBACION: {dec.message}"); approve(); check()
             say(f"Ciclo {cycle}: agarrando cubo {c.color} en ({c.x:.1f}, {c.y:.1f})")
+            if arbiter:
+                arbiter.set_state(PerryState.PICKING, carrying=False)
             try:
                 pick(cfg, m, c, grasp_dir, check)
             except OutOfTable as e:
@@ -191,11 +234,16 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, appro
             # directo a la caja (antes se estacionaba para verificar: viaje de más sobre la caja verde)
             check()
             say(f"Ciclo {cycle}: llevando el cubo {c.color} a {container}")
+            if arbiter:
+                arbiter.set_state(PerryState.DROPPING, carrying=True)
             drop(cfg, m, container)
+            if arbiter:
+                arbiter.set_carrying(False)
             # verificar CONTANDO con la cámara: el agarre salió si hay un cubo menos de ese color
             say(f"Ciclo {cycle}: verificando el agarre")
             after, _ = look(cfg, m, cam, log, f"verificacion{cycle}")
             ok = grab_succeeded(cubes, after, c)
+            last_cubes = after  # los cubos que quedan en la mesa
             log.record({"cycle": cycle, "event": "result", "ok": ok, "after": [cube_dict(d) for d in after]})
             if not ok:
                 # el mismo cubo = el intento anterior más cercano (un agarre fallido lo corre unos mm)
@@ -216,14 +264,34 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, appro
             done += 1
             fails_in_a_row = 0
             pushes = 0   # el límite de empujes es por atasco: si se agarró algo, la situación cambió
+            if arbiter:
+                arbiter.increment_sorted()
             log(f"Cubo {c.color} soltado en {container}. Llevo {done}.")
     except Cancelled:
+        was_cancelled = True
         log("CANCELADO por el usuario: subo y estaciono el brazo.")
         go_up(cfg, m)
-    move_via_top(m, cfg, cfg["poses"]["vista"], precise_base=False)
+    except Exception as e:
+        log(f"[ERROR en sort_loop] {e}")
+        if arbiter:
+            arbiter.set_state(PerryState.STOP, carrying=False, parked_ok=False)
+        raise
+    finally:
+        # 3. Al salir del bucle: estacionar y definir estado final del árbitro
+        parked = ensure_parked(m, cfg) if run else True
+        if arbiter:
+            arbiter.set_carrying(False)
+            if was_cancelled or not parked:
+                arbiter.set_state(PerryState.STOP, carrying=False, parked_ok=parked)
+            elif len(last_cubes) > 0:
+                arbiter.set_state(PerryState.BLOCKED, carrying=False, parked_ok=parked)
+            else:
+                arbiter.set_state(PerryState.FREE, carrying=False, parked_ok=parked)
+
     say("Detenido")
     log(f"Fin. Clasificados: {done}. Registro y fotos en {log.dir}")
     return done
+
 
 
 def main():
