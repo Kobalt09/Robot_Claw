@@ -105,7 +105,36 @@ ros2 topic echo /zone/occupant
 | Docker no arranca, o los carros no ven a Perry | Usá el camino B para la demo del brazo. Revisá con `docker compose logs` en `~/Robot_Claw_perry` |
 | Hay que usar `servo_cmd.py` con Docker corriendo | Primero `docker compose down` (los dos usan la Maestro) |
 
-## 7. Al terminar
+## 7. Respaldo: la versión probada del 31-10
+
+La etiqueta `perry-probado-31-10` es la última versión que corrió con el brazo real, antes de la integración
+con ROS 2. Si la versión integrada se comporta distinto, se vuelve a ella.
+
+Clonarla aparte, sin tocar tu copia de trabajo:
+
+```bash
+git clone --branch perry-probado-31-10 https://github.com/Kobalt09/Robot_Claw.git Robot_Claw_probado
+```
+
+Llevarla a la Pi y abrir su panel. Desde la carpeta del clon; primero se detiene el panel o el contenedor que
+esté corriendo:
+
+```bash
+ssh manipulador@169.254.49.182 'cd ~/Robot_Claw_perry && (docker compose down 2>/dev/null; pkill -f "^python3 audit_web.py"; true)'
+```
+
+```bash
+git archive perry-probado-31-10 perry codigo_python | ssh manipulador@169.254.49.182 "mkdir -p ~/Robot_Claw_probado && tar -xmf - -C ~/Robot_Claw_probado"
+```
+
+```bash
+ssh manipulador@169.254.49.182 'cd ~/Robot_Claw_probado/perry && (setsid nohup python3 audit_web.py > ~/perry_panel.log 2>&1 < /dev/null &)'
+```
+
+Va en otra carpeta de la Pi (`~/Robot_Claw_probado`), así que no pisa la integrada. El panel queda en la
+misma dirección: http://169.254.49.182:8000.
+
+## 8. Al terminar
 
 1. Con el brazo sostenido, apagá la fuente de los servos.
 2. Si usaste Docker: `ssh manipulador@169.254.49.182 "cd ~/Robot_Claw_perry && docker compose down"`.
