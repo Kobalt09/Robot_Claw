@@ -108,8 +108,13 @@ class PerryRosBridge(Node):  # type: ignore[misc, valid-type]
             )
             self._occupant_pub = self.create_publisher(String, "/zone/occupant", occ_qos)
 
-            # QoS para /perry/state
-            state_qos = QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=5, reliability=ReliabilityPolicy.RELIABLE)
+            # QoS para /perry/state (RELIABLE + TRANSIENT_LOCAL es compatible tanto con suscriptores VOLATILE como TRANSIENT_LOCAL)
+            state_qos = QoSProfile(
+                history=HistoryPolicy.KEEP_LAST,
+                depth=1,
+                reliability=ReliabilityPolicy.RELIABLE,
+                durability=DurabilityPolicy.TRANSIENT_LOCAL,
+            )
             self._state_pub = self.create_publisher(RobotState, "/perry/state", state_qos)
 
             # Servicios de zona
