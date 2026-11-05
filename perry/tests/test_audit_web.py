@@ -185,6 +185,44 @@ def test_start_and_stop_endpoints():
         S.stop.clear()
 
 
+def test_bridge_api_endpoints():
+    """Valida los endpoints HTTP usados por el puente ROS 2."""
+    # 1. /robot_state
+    body = json.dumps({
+        "robot": "ferb",
+        "state": "SEARCHING",
+        "carrying": True,
+        "delivered": 5,
+        "gate_closed": False,
+    }).encode("utf-8")
+    h_state = MockHTTPHandler("POST", "/robot_state", body=body)
+    h_state.do_POST()
+    assert 200 in h_state.responses
+    fleet = audit_web.get_fleet_state()
+    assert fleet["ferb"]["state"] == "SEARCHING"
+    assert fleet["ferb"]["carrying"] is True
+    assert fleet["ferb"]["delivered"] == 5
+
+    # 2. /zone_request
+    S.arbiter.set_state(PerryState.FREE, parked_ok=True)
+    body_req = json.dumps({"robot": "ferb"}).encode("utf-8")
+    h_req = MockHTTPHandler("POST", "/zone_request", body=body_req)
+    h_req.do_POST()
+    assert 200 in h_req.responses
+    res_req = json.loads(h_req.wfile.getvalue().decode())
+    assert res_req["granted"] is True
+    assert res_req["holder"] == "ferb"
+
+    # 3. /zone_release
+    body_rel = json.dumps({"robot": "ferb", "delivered": True, "color": "azul"}).encode("utf-8")
+    h_rel = MockHTTPHandler("POST", "/zone_release", body=body_rel)
+    h_rel.do_POST()
+    assert 200 in h_rel.responses
+    res_rel = json.loads(h_rel.wfile.getvalue().decode())
+    assert res_rel["ok"] is True
+    assert res_rel["count"] == 1
+
+
 if __name__ == "__main__":
     pytest.main([__file__])
 

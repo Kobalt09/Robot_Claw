@@ -30,7 +30,7 @@ import yaml
 from audit import draw_plan
 from reach import ensure_parked
 from planner import reachable
-from ros_node import start_ros_node, get_fleet_state
+from ros_node import start_ros_node, get_fleet_state, update_robot_state
 from settle import Settler
 from sort_cubes import Log, open_arm, sort_loop
 from vision import TopCamera, zone_is_clear
@@ -783,6 +783,9 @@ class Handler(BaseHTTPRequestHandler):
 
             try:
                 with open_arm(S.cfg) as m_enable:
+                    from reach import is_energized, energize_to_park
+                    if not is_energized(m_enable, S.cfg):
+                        energize_to_park(m_enable, S.cfg)
                     if not ensure_parked(m_enable, S.cfg):
                         S.arbiter.set_state(PerryState.STOP, carrying=False, parked_ok=False)
                         return self.send("Fallo físico: el brazo no está energizado o no llegó a vista.".encode(), code=500)
@@ -814,6 +817,46 @@ class Handler(BaseHTTPRequestHandler):
             S.cfg = yaml.safe_load(YAML.read_text(encoding="utf-8"))
             S.plan = None
             return self.send(f"Guardado: {new}. Revisá en Seguimiento que la zona coincida.".encode())
+
+        # API ROS 2 Bridge: Solicitud de zona (/zone_request)
+        if self.path == "/zone_request":
+            try:
+                data = json.loads(body) if body else {}
+                robot = str(data.get("robot", "")).strip().lower()
+                granted, holder, rem = S.arbiter.request_zone(robot) if S.arbiter else (False, "perry", 0.0)
+                resp = {"granted": bool(granted), "holder": str(holder), "remaining_s": float(rem)}
+                return self.send(json.dumps(resp).encode(), "application/json")
+            except Exception as e:
+                return self.send(json.dumps({"error": str(e)}).encode(), code=400)
+
+        # API ROS 2 Bridge: Liberación de zona (/zone_release)
+        if self.path == "/zone_release":
+            try:
+                data = json.loads(body) if body else {}
+                robot = str(data.get("robot", "")).strip().lower()
+                deliv = bool(data.get("delivered", False))
+                color = str(data.get("color", "")).strip().lower()
+                ok, count = S.arbiter.release_zone(robot, delivered=deliv, color=color) if S.arbiter else (False, 0)
+                resp = {"ok": bool(ok), "count": int(count)}
+                return self.send(json.dumps(resp).encode(), "application/json")
+            except Exception as e:
+                return self.send(json.dumps({"error": str(e)}).encode(), code=400)
+
+        # API ROS 2 Bridge: Actualización de estado de carro (/robot_state)
+        if self.path == "/robot_state":
+            try:
+                data = json.loads(body) if body else {}
+                robot = str(data.get("robot", "")).strip().lower()
+                update_robot_state(
+                    robot_name=robot,
+                    state=str(data.get("state", "desconectado")),
+                    carrying=bool(data.get("carrying", False)),
+                    delivered=int(data.get("delivered", 0)),
+                    gate_closed=bool(data.get("gate_closed", False)),
+                )
+                return self.send(b'{"ok": true}', "application/json")
+            except Exception as e:
+                return self.send(json.dumps({"error": str(e)}).encode(), code=400)
 
         self.send(b"no", code=404)
 

@@ -1,0 +1,9 @@
+{
+  "extraPaths": [
+    "perry",
+    "codigo_python"
+  ],
+  "pythonVersion": "3.12",
+  "pythonPlatform": "Windows"
+}
+

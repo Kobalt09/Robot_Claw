@@ -1,0 +1,13 @@
+services:
+  perry_bridge:
+    image: ros:jazzy-ros-base
+    container_name: perry_ros_bridge
+    network_mode: host
+    volumes:
+      - .:/ws
+    environment:
+      - ROS_DOMAIN_ID=0
+      - PERRY_API=http://172.25.32.1:8000
+      - PYTHONUNBUFFERED=1
+    command: ["/bin/bash", "/ws/docker/entrypoint_bridge.sh"]
+    restart: unless-stopped

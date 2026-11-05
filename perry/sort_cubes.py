@@ -18,6 +18,7 @@ Puerto: variable PERRY_PORT (en Windows, por ejemplo COM5) o el de arm.yaml.
 import argparse
 import json
 import os
+import sys
 import threading
 import time
 from math import atan2, degrees, hypot
@@ -86,7 +87,10 @@ def open_arm(cfg):
     limits = {j["channel"]: (j["min"], j["max"]) for j in cfg["joints"].values()}
     g = cfg["gripper"]
     limits[g["channel"]] = (g["min"], g["max"])
-    m = Maestro(os.environ.get("PERRY_PORT", cfg["port"]), limits=limits)
+    port = os.environ.get("PERRY_PORT", cfg["port"])
+    if sys.platform == "win32" and str(port).startswith("/dev/"):
+        port = "COM5"
+    m = Maestro(port, limits=limits)
     for ch in limits:
         m.set_speed(ch, cfg["speed"]); m.set_acceleration(ch, cfg["acceleration"])
     return m

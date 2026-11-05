@@ -45,7 +45,12 @@ class CapturaCamara:
         self.usar_hilo = usar_hilo
 
         # En Linux / Raspberry Pi se recomienda cv2.CAP_V4L2 para menor sobrecarga
-        backend = cv2.CAP_V4L2 if sys.platform.startswith("linux") else cv2.CAP_ANY
+        if sys.platform.startswith("linux"):
+            backend = cv2.CAP_V4L2
+        elif sys.platform == "win32":
+            backend = cv2.CAP_DSHOW
+        else:
+            backend = cv2.CAP_ANY
 
         self.cap = cv2.VideoCapture(self.indice, backend)
         if not self.cap.isOpened():

@@ -42,7 +42,7 @@ gripper: {channel: 10, open: 750, closed: 1700, push_closed: 2350, min: 500, max
 
 # Cámara cenital. Si la mueven: py calibrate_camera.py (vuelve a marcar las 4 esquinas).
 camera:
-  index: 0                 # en la PC de Ignacio cambia entre 0 y 1 según qué se conecte primero
+  index: 1                 # en la PC de Ignacio cambia entre 0 y 1 según qué se conecte primero
   warmup_s: 2.0            # espera para que ajuste la exposición
   # Homografía: 4 esquinas del AZUL de la zona (sin las cintas verdes), en este orden: lejana izq.,
   # lejana der., cercana der., cercana izq.; en píxeles y en cm (X hacia la zona, Y a la izquierda).

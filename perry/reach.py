@@ -214,3 +214,27 @@ def ensure_parked(m, cfg):
         return is_parked(m, cfg)
     except Exception:
         return False
+
+
+def energize_to_park(m, cfg):
+    """Energiza suavemente el brazo desde 0 us llevándolo a la pose de reposo ('vista')."""
+    try:
+        for j in ARM:
+            ch = cfg["joints"][j]["channel"]
+            m.set_us(ch, cfg["travel"][j])
+            m.wait()
+        base_ch = cfg["joints"]["base"]["channel"]
+        m.set_us(base_ch, cfg["poses"]["vista"]["base"])
+        m.wait()
+        giro_ch = cfg["joints"]["giro"]["channel"]
+        m.set_us(giro_ch, 1447)
+        m.wait()
+        if "gripper" in cfg and "channel" in cfg["gripper"]:
+            m.set_us(cfg["gripper"]["channel"], cfg["gripper"]["open"])
+            m.wait()
+        settle_s = cfg.get("park_settle_s", 0.0)
+        if settle_s > 0:
+            time.sleep(settle_s)
+        return is_parked(m, cfg)
+    except Exception:
+        return False

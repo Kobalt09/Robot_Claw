@@ -183,7 +183,12 @@ else:
 
 
 def start_ros_node(arbiter: ZoneArbiter, publish_rate_hz: float = 2.0) -> Optional[Any]:
-    """Inicia el nodo ROS 2 en un hilo secundario si rclpy está disponible."""
+    """Inicia el nodo ROS 2 en un hilo secundario si rclpy está disponible y no se usa modo bridge."""
+    import os
+    if os.environ.get("PERRY_MODE") == "bridge":
+        print("[ROS 2] Modo bridge activo (Docker maneja ROS 2); omitiendo nodo local en audit_web.")
+        return None
+
     if not HAS_RCLPY or PerryFleetNode is None:
         print("[ROS 2] rclpy no está instalado o no se puede importar; funcionando en modo local.")
         return None

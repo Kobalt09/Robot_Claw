@@ -1,0 +1,65 @@
+PERRY: COMUNICACIÓN CON LA FLOTA (ROS 2)
+Para quien sigue con la comunicación. Preparado el 03-11-2026.
+
+=========================================================================
+QUÉ HAY EN ESTA CARPETA
+=========================================================================
+perry_claw_lyrical_arm64.tar.gz      Imagen de Docker de Perry YA CONSTRUIDA, para la Pi (arm64),
+                                     con ROS 2 Lyrical. 664 MB. No hace falta bajar nada de internet.
+Robot_Claw_feat-perry-integracion.zip  El código (rama feat/perry-integracion, último commit 76de845).
+Robot_Claw.bundle                    El mismo repo con su historia, para clonarlo sin internet:
+                                       git clone -b feat/perry-integracion Robot_Claw.bundle Robot_Claw
+                                     (también está en GitHub: https://github.com/Kobalt09/Robot_Claw)
+guia_laboratorio.md                  Guía paso a paso: encender, energizar servos, levantar Perry, fallas.
+docker_README.md                     Cómo funciona el contenedor.
+
+=========================================================================
+LO QUE YA ESTÁ PROBADO
+=========================================================================
+- Perry clasifica cubos con la versión integrada, corriendo en la PC (03-11). Cámara recalibrada hoy.
+- La imagen, emulando la Pi en una PC: compila multirobot_interfaces, y el nodo de Perry
+    * publica /zone/occupant ("perry" al arrancar: zona cerrada) y /perry/state (gate_closed: true);
+    * niega la llave con la zona cerrada; con la zona libre la da (60 s), se la niega al segundo carro,
+      y la devolución con delivered=true suma al conteo (delivered_total).
+- Las interfaces (.msg/.srv) son idénticas byte a byte en Phineas, Ferb y Perry.
+- QoS de /zone/occupant: RELIABLE + TRANSIENT_LOCAL, depth 1, igual que el fleet_link de Ferb.
+
+=========================================================================
+LO QUE FALTA (tu parte)
+=========================================================================
+1. Levantar la imagen EN LA PI REAL (nunca corrió ahí).
+2. Que la Pi de Perry y las de los carros se vean por ROS (misma red, ROS_DOMAIN_ID=0).
+3. Probar desde la Pi de un carro:
+     ros2 topic echo /zone/occupant
+     ros2 topic echo /perry/state
+     ros2 service call /zone/request multirobot_interfaces/srv/RequestZone "{robot: ferb}"
+4. Con los carros: dejar escrito que gate_closed en /perry/state significa "zona cerrada, no traigan"
+   (en sus robots ese campo es la compuerta de la pala). Phineas todavía no escucha /perry/state.
+
+=========================================================================
+OJO: LA PI NO RESPONDIÓ HOY POR EL CABLE
+=========================================================================
+El 03-11 la Pi de Perry (usuario manipulador, antes en 169.254.49.182 por cable directo) arrancaba
+(LED rojo fijo, verde parpadeando) y el cable daba enlace, pero no respondía a ping ni a SSH, ni por
+IPv6 ni por nombre. Se descartaron la fuente, el cable de alimentación, el cable de red y el puerto.
+Lo más probable es que alguien haya cambiado su configuración de red. Hace falta mirar adentro:
+  - con monitor (micro-HDMI) y teclado:  ip -br addr ; nmcli device
+  - o sacando la microSD y agregando al final de bootfs/cmdline.txt (UNA sola línea, con un espacio):
+      ip=169.254.49.182::0.0.0.0:255.255.0.0::eth0:off
+    Ojo: al meter la microSD en Windows, si pide FORMATEAR, tocar CANCELAR (borraría la Pi).
+Recordatorio: la Pi no arranca si la Maestro y la webcam están conectadas al encender.
+
+=========================================================================
+CÓMO CARGAR LA IMAGEN EN LA PI
+=========================================================================
+Con SSH funcionando (desde Git Bash en una PC, con el repo y este archivo dentro de docker/):
+     bash docker/deploy_pi.sh
+O a mano, copiando el archivo a la Pi:
+     scp perry_claw_lyrical_arm64.tar.gz manipulador@<IP-de-la-Pi>:~
+     ssh manipulador@<IP-de-la-Pi> "gunzip -c ~/perry_claw_lyrical_arm64.tar.gz | docker load"
+     (después: copiar el código a ~/Robot_Claw_perry y ahí  docker compose up -d --no-build)
+El primer arranque tarda unos minutos compilando multirobot_interfaces. Está listo cuando
+docker compose logs muestra "Panel web de Perry iniciado". Panel: http://<IP-de-la-Pi>:8000
+
+Si algo de ROS/Docker falla el día de la demo, el brazo funciona solo sin ROS:
+     cd perry && python3 audit_web.py    (en la PC con PERRY_PORT=COM5, o en la Pi)
