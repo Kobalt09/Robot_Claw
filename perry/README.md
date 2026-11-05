@@ -49,7 +49,7 @@ debería haber hecho.
 | Pasó esto | Hacer |
 | --- | --- |
 | Movieron la cámara cenital | `py calibrate_camera.py`: clic en las 4 esquinas del rectángulo |
-| La cámara cambió de número | `camera.index` en `arm.yaml` (0 o 1) |
+| La cámara cambió de número, o el panel muestra otra cámara | `py list_cameras.py` (guarda una foto por índice en `logs/camaras/`) y antes del panel `$env:PERRY_CAMERA = "N"`. Para todas las PC: `camera.index` en `arm.yaml` |
 | Agarra alto o se clava en la mesa | `reach.grip_shoulder_offset_us` (más negativo = baja más) |
 | Falla siempre a cierta distancia | Enseñar una fila nueva en `reach.rows` (ver abajo) |
 | Suelta el cubo en el aire | `gripper.closed` un poco más alto (1700 = cerrada del todo) |

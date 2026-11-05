@@ -7,6 +7,7 @@ Usa el detector de colores del equipo (codigo_python/detector_colores.py) y le a
 
 Todo número vive en arm.yaml. Si mueven la cámara: py calibrate_camera.py
 """
+import os
 import sys
 import time
 from dataclasses import dataclass
@@ -124,22 +125,45 @@ class Cube:
     raw_y: float = 0.0
 
 
+CAMERA_ENV = "PERRY_CAMERA"
+
+
+def camera_candidates(c, env=os.environ):
+    """Índices de cámara a probar, en orden.
+
+    Con PERRY_CAMERA (como PERRY_PORT) cada PC fija su cámara sin tocar arm.yaml: solo ese índice,
+    sin caer a otra en silencio (una cámara integrada abre sin error y el panel usaría la equivocada).
+    Sin la variable: camera.index primero y después los demás hasta camera.max_index.
+    """
+    fixed = env.get(CAMERA_ENV, "").strip()
+    if fixed:
+        try:
+            return [int(fixed)]
+        except ValueError:
+            raise ValueError(f"{CAMERA_ENV}={fixed!r}: debe ser un número de cámara (0, 1, 2...)") from None
+    first = c["index"]
+    return [first] + [i for i in range(c["max_index"]) if i != first]
+
+
 class TopCamera:
     """Cámara cenital con la homografía de arm.yaml. Úsala con `with`."""
 
     def __init__(self, cfg):
         self._setup_detection(cfg)
         c = self.cfg
-        idx = c.get("index", 1)
-        try:
-            self.cam = CapturaCamara(indice_camara=idx)
-        except RuntimeError as e:
-            alt_idx = 0 if idx == 1 else 1
+        tried = camera_candidates(c)
+        for idx in tried:
             try:
-                self.cam = CapturaCamara(indice_camara=alt_idx)
-                c["index"] = alt_idx
+                self.cam = CapturaCamara(indice_camara=idx)
+                break
             except RuntimeError:
-                raise RuntimeError(f"No se pudo abrir la cámara en el índice {idx} ni en {alt_idx}: {e}")
+                continue
+        else:
+            hint = f" (la fijó {CAMERA_ENV})" if os.environ.get(CAMERA_ENV, "").strip() else ""
+            raise RuntimeError(f"No se pudo abrir la cámara en {tried}{hint}. "
+                               f"Ver cuál es la cenital: py list_cameras.py")
+        c["index"] = idx
+        print(f"[cámara] usando el índice {idx} ({CAMERA_ENV} o camera.index para cambiarlo)")
         time.sleep(c["warmup_s"])
         # punto de la mesa justo debajo de la cámara: el de arm.yaml, o el centro de la imagen
         if self.nadir is None:
