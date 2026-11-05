@@ -28,7 +28,7 @@ from planner import decide, reachable
 from reach import pulses_at, OutOfTable
 
 HERE = Path(__file__).parent
-COLORS = {"azul": (255, 120, 0), "amarillo": (0, 220, 255)}
+COLORS = {"azul": (255, 120, 0), "amarillo": (0, 220, 255), "rojo": (40, 40, 230)}
 ORANGE = (0, 140, 255)
 GREEN, RED, YELLOW, MAGENTA, GRAY, WHITE = (60, 200, 60), (40, 40, 230), (0, 230, 255), (230, 0, 230), (150, 150, 150), (255, 255, 255)
 

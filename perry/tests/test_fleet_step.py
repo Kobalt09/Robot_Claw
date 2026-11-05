@@ -15,6 +15,7 @@ sys.path.insert(0, str(HERE.parent))
 import audit_web  # noqa: E402
 from audit_web import S, fleet_step  # noqa: E402
 from zone_arbiter import PerryState, ZoneArbiter  # noqa: E402
+from test_zone_clear import IMAGES_CORNERS_PX  # noqa: E402
 
 
 def load(name):
@@ -29,6 +30,7 @@ BIG = load("brazo_sobre_zona.jpg")      # objeto grande en la zona (como la pala
 @pytest.fixture(autouse=True)
 def state():
     S.cfg = yaml.safe_load((HERE.parent / "config" / "arm.yaml").read_text(encoding="utf-8"))
+    S.cfg["camera"]["corners_px"] = IMAGES_CORNERS_PX   # la calibración con la que se sacaron las fotos
     S.arbiter = ZoneArbiter(initial_state=PerryState.FREE)
     S.arbiter.set_parked_ok(True)
     S.running = False

@@ -35,22 +35,26 @@ joints:
   # error mirando la cenital y agarraba los cubos por los vértices.
   giro:   {channel: 8,  cal: [[0, 1447],   [45, 998]], min: 540, max: 2360}   # ±90° probado sin zumbido (27-10)
 
-# pinza: 750 abierta. 1700 = cierre firme (27-10: con 1500/1600 el agarre quedaba al límite y a
-# veces el cubo se escurría; con 1700 lo sostiene sin zumbido continuo).
+# pinza: la apertura NO baja de forma pareja con el pulso. Medido 05-11 (cara interna, con las almohadillas
+# de 1 mm nuevas): 750 = 2,4 cm; 900 = 2,9; 1000 = 3,2; 1150 = 3,5; máximo ~3,6 cm hacia 1350; después
+# se cierra (1700 = cierre firme). Con 750 abría 2,4 cm: sobre un cubo de 1,9 quedaban 2,5 mm por lado
+# y un dedo caía sobre la cara de arriba. closed: 2000 (Cristian, 05-11); si zumba al llevar el cubo, 1700.
 # push_closed: para EMPUJAR, puntas juntas (~2 mm entre ellas, medido 28-10 sin zumbido)
-gripper: {channel: 10, open: 750, closed: 2000, push_closed: 2350, min: 500, max: 2500}
+gripper: {channel: 10, open: 1000, closed: 2000, push_closed: 2350, min: 500, max: 2500}   # open 1000 = 3,2 cm (05-11)
 
 # Cámara cenital. Si la mueven: py calibrate_camera.py (vuelve a marcar las 4 esquinas).
 camera:
-  index: 1                 # en la PC de Ignacio cambia entre 0 y 1 según qué se conecte primero
+  index: 0                 # en la PC de Ignacio cambia entre 0 y 1 según qué se conecte primero
   warmup_s: 2.0            # espera para que ajuste la exposición
   # Homografía: 4 esquinas del AZUL de la zona (sin las cintas verdes), en este orden: lejana izq.,
   # lejana der., cercana der., cercana izq.; en píxeles y en cm (X hacia la zona, Y a la izquierda).
   # Los cm se midieron el 31-10 con la calibración de la milimetrada (precisión ~3 mm). Si mueven
   # la cámara: solo cambian corners_px (las esquinas del azul en la imagen nueva).
-  corners_px: [[245.8, 135.1], [409.4, 126.7], [414.5, 226.2], [250.9, 234.5]]
-  corners_cm: [[21.47, 7.90], [21.19, -8.40], [11.48, -8.02], [11.77, 8.13]]
-  zone: {x_min: 10.0, x_max: 21.0, y_abs: 9.5}   # solo se buscan cubos aquí (+1 cm de margen)
+  # 05-11: la base se corrió 1,8 cm hacia la zona (los cubos que dejan los carros en el borde lejano
+  # quedaban fuera de alcance): a cada X se le restó 1,8. Antes: [[21.47, 7.90], [21.19, -8.40], ...].
+  corners_px: [[245.0, 137.0], [406.0, 128.0], [409.0, 223.0], [251.0, 232.0]]
+  corners_cm: [[19.67, 7.90], [19.39, -8.40], [9.68, -8.02], [9.97, 8.13]]
+  zone: {x_min: 8.2, x_max: 20.5, y_abs: 9.5}    # solo se buscan cubos aquí (el azul más un margen)
   height_cm: 70.0          # altura del lente sobre la mesa: corrige la paralaje (la cámara ve la cara
                            # de arriba del cubo y lo ve corrido hacia afuera; fuera del centro, 0,5–1 cm)
   nadir_cm: null           # punto de la mesa bajo la cámara (plomada). null = centro de la imagen
@@ -58,7 +62,12 @@ camera:
   colors:                  # rangos HSV de OpenCV (H 0–179)
     azul:     [[[109, 100, 50], [130, 255, 255]]]   # H desde 109: el fondo de la zona azul es H 103-104;
                                                    # los cubos azules, 113-124 (medido 31-10)
-    amarillo: [[[18, 90, 90],  [35, 255, 255]]]
+    # 05-11: S desde 150 y H hasta 32. La cinta verde de los bordes (H 36–48, S 75–120) entraba como cubo
+    # amarillo; el cubo real es H 24–26, S 218–230.
+    amarillo: [[[18, 150, 90], [32, 255, 255]]]
+    # rojo: cubos trampa que los carros traen por accidente. No tiene caja: Perry los esquiva y avisa.
+    # El tono da la vuelta en 0/180 (medido 05-11: H 171–180, S >= 125, V >= 104).
+    rojo:     [[[0, 100, 80], [8, 255, 255]], [[165, 100, 80], [179, 255, 255]]]
   zone_bg_hsv: [[98, 150, 80], [108, 255, 255]]   # fondo de la zona azul (H 103-104): lo que no sea esto,
                                                   # dentro del azul, es un objeto (cubo, pala, brazo)
 
@@ -75,18 +84,22 @@ settle:
 # Planificación de agarre con cubos agrupados (grasp.py). Medidas en cm.
 grasp:
   cube: 1.9
-  finger_thick: 0.5
+  finger_thick: 0.6    # 05-11: 0,5 + la almohadilla de 1 mm
   finger_width: 1.9
-  opening: 4.1         # apertura con gripper.open. Pre-cerrar (~2,9 cm) libera más cubos: falta
-                       # medir qué pulso da 2,9 cm y poner aquí 2.9 y ese pulso en gripper.open
+  opening: 3.2         # apertura con gripper.open = 1000 (medida 05-11). Con 2,9 (900) rozaba la cara de arriba de
+                       # cubos girados (~-23°: el giro de la pinza erra unos grados). 3,6 (1350) tolera más
+                       # sobre el objetivo, pero los dedos ocupan más lugar al costado. El 4,1 del 27-10 no
+                       # se sabe cómo se midió y no tenía las almohadillas
   error: 0.5           # error de posición esperado de la punta
   push: 3.8            # cuánto se desliza una fila al empujarla: 2 cubos, para sacarla del bloque
                        # entera (con 3,0 los cubos se arrastraban entre sí y el 2x2 quedaba escalonado)
   w_giro: 0.3
   w_r: 0.02
-  error_lateral: 0.1   # margen a lo ancho de cada dedo (a lo largo sigue siendo error); 0,2 bloqueaba
+  error_lateral: 0.2   # margen a lo ancho de cada dedo (a lo largo sigue siendo error). 05-11: 0,1 dejaba bajar un dedo a 1 mm de un rojo vecino y le pegaba (la pinza erra 3–4 mm); el 31-10, 0,2 bloqueaba (escenas en tests)
                        # cubos con otro pegado a una cara (31-10)
   push_gap: 0.3        # la pinza que empuja baja 0,3 cm más lejos del cubo (no caerle encima)
+  behind_gap: 1.0      # 05-11: luz mínima DETRÁS del cubo (más lejos del brazo). Si es menor, primero se separan:
+                       # al bajar, el cuerpo de la pinza pegaba en el cubo de atrás (más cerca del borde, inclinada)
   push_dir_step: 30   # empujar también en cualquier dirección (cada 30°), no solo perpendicular a las caras
 push_lift_us: 20       # al empujar, la pinza va este tanto (hombro) más alta que al agarrar
 push_step_cm: 0.5      # el empuje avanza de a estos cm
@@ -100,6 +113,12 @@ sort:
   max_pushes: 3            # tope de empujes SEGUIDOS sin lograr agarrar nada (zona bloqueada)
   push_margin_r: 1.0       # un cubo empujado debe quedar a esto de AMBOS bordes del alcance (mínimo de la tabla y max_r): en cadena se corren mm de más
   log_dir: logs            # fotos y registro de cada corrida (dentro de perry/)
+  # Descarte (05-11): los cubos de estos colores no tienen caja. Perry saca primero los que tapan un
+  # objetivo y, al terminar, los que queden; los apoya en la mesa en poses.descarte (base), en la postura de
+  # agarre a cada una de estas distancias (cm, filas enseñadas), con el hombro discard_lift_us más alto.
+  discard_colors: [rojo]
+  discard_rs: [16.0, 13.83, 18.06]   # ~2 cm entre lugares: el siguiente rojo no cae encima del anterior
+  discard_lift_us: 90      # 1330 a 16 cm, verificado a mano: apoya sin que el cubo rebote
 
 # Posturas enseñadas: la punta toca el papel. r = distancia al eje de la base (cm).
 # Origen: poses del Maestro Control Center (20-10) sobre el rectángulo de 16,5 × 8,5 cm
@@ -114,7 +133,9 @@ reach:
     - {r: 13.19, hombro: 1323, codo: 1573, muneca: 2097}   # cubo real en (13,1; 1,5), verificado a ojo (27-10)
     - {r: 13.83, hombro: 1321, codo: 1568, muneca: 2088}   # esquinas cercanas
     - {r: 15.35, hombro: 1302, codo: 1521, muneca: 2006}   # centro del rectángulo
-    - {r: 16.5,  hombro: 1303, codo: 1428, muneca: 2117}   # centro del área calibrado con cubo real (05-11)
+    - {r: 16.0,  hombro: 1270, codo: 1426, muneca: 2042}   # primer agarre real de un cubo (20-10)
+    # 05-11: se volvió a esta fila. La de {r: 16.5, hombro: 1303, codo: 1428, muneca: 2117} dejaba la pinza
+    # 7–10 mm corta entre 15,5 y 16,7 cm (prueba de precisión: error de distancia, no de lado).
     - {r: 18.06, hombro: 1195, codo: 1198, muneca: 2094}   # agarre real en (17,3; -5,2) (20-10)
     - {r: 21.2,  hombro: 1150, codo: 836,  muneca: 2189}   # pinza vertical, punta sobre la mesa (visto en (18,9; 7,3) +1 cm)
     # descartadas: {r: 19.5, hombro: 1200, codo: 1040, muneca: 2130} (se pasaba y empujaba los cubos)
@@ -130,8 +151,15 @@ poses:
   # vista_izq: {base: 900}  # DESACTIVADA 31-10: la pinza quedaba casi a la altura del borde de la caja
   #                         # amarilla y al girar hacia la zona la chocó. Falta una pose más alta.
   inicio:   {base: 1479, hombro: 1400, codo: 1521, muneca: 2006, giro: 1447}
-  amarillo: {base: 865,  hombro: 1244, codo: 737,  muneca: 2496, giro: 2059}   # caja izquierda
-  verde:    {base: 2079, hombro: 1244, codo: 737,  muneca: 2496, giro: 952}    # caja derecha
+  # 05-11: las cajas se pusieron en horizontal y cambiaron de lado (verde a la izquierda, amarilla a la
+  # derecha). Se suelta desde la pose de traslado (brazo alto); solo cambia la base. Antes:
+  #   amarillo: {base: 865,  hombro: 1244, codo: 737, muneca: 2496, giro: 2059}  (izquierda)
+  #   verde:    {base: 2079, hombro: 1244, codo: 737, muneca: 2496, giro: 952}   (derecha)
+  amarillo: {base: 2150}   # caja derecha: es el tope de la base (verificado con el brazo, sin zumbido)
+  verde:    {base: 979}    # caja izquierda (verificado con el brazo)
+  # descarte de cubos sin caja (rojos), sobre la mesa más allá de la caja verde, con la base en el tope
+  # izquierdo. Las posturas salen de sort.discard_rs (05-11: a 16 cm, hombro 1330, verificado a mano).
+  descarte: {base: 520, giro: 1447}
 
 # Tolerancia y estabilización para verificar posición de reposo (Fase 1: reach.py)
 park_tolerance_us: 30     # margen aceptable (±us) en travel y base para declarar reposo

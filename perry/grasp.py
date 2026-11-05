@@ -41,6 +41,27 @@ class GraspCfg:
     error_lateral: float = None  # margen a lo ANCHO de cada dedo (None = igual a error). Rozar una
                                  # esquina vecina de costado no impide el agarre; caer encima, sí
     push_gap: float = 0.0        # luz extra entre la pinza que empuja y el cubo al bajar
+    behind_gap: float = 0.0      # luz mínima detrás del cubo (más lejos del brazo): ahí pega el cuerpo de
+                                 # la pinza al bajar, más si baja inclinada (05-11). 0 = no se mira
+
+
+def blocked_behind(c, cubes, g):
+    """¿Hay otro cubo justo detrás de `c` (en la línea brazo-cubo, más lejos) con menos de behind_gap de luz?"""
+    if g.behind_gap <= 0:
+        return False
+    r = hypot(c.x, c.y)
+    if r == 0:
+        return False
+    u = (c.x / r, c.y / r)
+    for o in cubes:
+        if o is c:
+            continue
+        dx, dy = o.x - c.x, o.y - c.y
+        along = dx * u[0] + dy * u[1]            # cuánto más lejos del brazo
+        across = abs(dx * u[1] - dy * u[0])      # cuánto de costado
+        if 0 < along < g.cube + g.behind_gap and across < g.cube:
+            return True
+    return False
 
 
 @dataclass
@@ -134,7 +155,7 @@ def choose_grasp(cubes, g, reachable):
     """El agarre más conveniente: (cubo, dirección de cierre) o None si no hay ninguno."""
     best, best_score = None, None
     for c in cubes:
-        if not reachable(c):
+        if not reachable(c) or blocked_behind(c, cubes, g):
             continue
         for d in closing_dirs(c):
             clear = axis_clearance(c, cubes, d, g)

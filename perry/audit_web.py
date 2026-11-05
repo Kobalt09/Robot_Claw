@@ -29,10 +29,10 @@ import yaml
 
 from audit import draw_plan
 from reach import ensure_parked
-from planner import reachable
+from planner import sortable
 from ros_node import start_ros_node, get_fleet_state, update_robot_state
 from settle import Settler
-from sort_cubes import Log, open_arm, sort_loop
+from sort_cubes import Log, count_waiting, open_arm, sort_loop
 from vision import TopCamera, zone_is_clear
 from zone_arbiter import PerryState, ZoneArbiter
 
@@ -594,7 +594,8 @@ def fleet_step(now, frame, launch):
 
 def blocked_can_reopen(frame, cubes):
     """La zona bloqueada se reabre sola solo sin cubos Y sin objeto grande (un carro no se ve como cubo)."""
-    return len(cubes) == 0 and zone_is_clear(frame, S.cfg)
+    # los cubos sin caja (rojos) no traban la zona: se retiran a mano
+    return not any(sortable(S.cfg, k) for k in cubes) and zone_is_clear(frame, S.cfg)
 
 
 def camera_loop():
@@ -618,7 +619,7 @@ def camera_loop():
 
                     # zona llena: cubos alcanzables esperando (no mientras un carro mete la pala: la ve como cubos)
                     if not S.running and S.settle is None and S.arbiter.state != PerryState.RECEIVING:
-                        S.arbiter.set_zone_cubes(sum(reachable(cfg, k) for k in cubes))
+                        S.arbiter.set_zone_cubes(count_waiting(cfg, cubes))
 
                     # 2. Tras una entrega (/zone/release): ASENTANDO y recién después el ciclo
                     fleet_step(time.time(), cam.last_frame,

@@ -29,9 +29,9 @@ import yaml
 from audit import draw_plan
 from grasp import GraspCfg, grab_succeeded
 from maestro import Maestro
-from planner import decide, reachable
+from planner import decide, reachable, sortable
 from replay import cube_dict
-from reach import pulses_at, move_via_top, lower_shoulder, push, OutOfTable, ensure_parked
+from reach import interp_reach, pulses_at, move_via_top, lower_shoulder, push, OutOfTable, ensure_parked
 from vision import TopCamera, save_image
 from zone_arbiter import PerryState, ZoneArbiter
 
@@ -132,9 +132,36 @@ def pick(cfg, m, cube, grasp_dir, check):
     go_up(cfg, m)                                   # sube en vertical primero con el hombro
 
 
+def count_waiting(cfg, cubes, to=None, colors=None):
+    """Cubos alcanzables que esperan ser clasificados (para «zona llena»). Los rojos no cuentan."""
+    return sum(reachable(cfg, k) and sortable(cfg, k, to, colors) for k in cubes)
+
+
+_discard_next = 0   # próximo lugar del descarte (sigue mientras corre el panel, de una corrida a otra)
+
+
+def discard_pose(cfg, slot):
+    """Pose para apoyar un cubo descartado en el lugar `slot` (rotan: sort.discard_rs).
+
+    Base de poses.descarte y la postura de agarre de la tabla enseñada a esa distancia, con el hombro
+    sort.discard_lift_us más alto: el cubo queda apoyado, no tirado.
+    """
+    s = cfg["sort"]
+    pose = dict(interp_reach(cfg, s["discard_rs"][slot % len(s["discard_rs"])], "grip"))
+    pose["hombro"] += s["discard_lift_us"]
+    pose.update(cfg["poses"]["descarte"])
+    return pose
+
+
 def drop(cfg, m, container):
+    global _discard_next
     g = cfg["gripper"]
-    move_via_top(m, cfg, cfg["poses"][container], precise_base=False)
+    if container == "descarte":
+        target = discard_pose(cfg, _discard_next)
+        _discard_next += 1
+    else:
+        target = cfg["poses"][container]
+    move_via_top(m, cfg, target, precise_base=False)
     m.set_us(g["channel"], g["open"]); m.wait(); time.sleep(0.3)
     go_up(cfg, m)
 
@@ -178,6 +205,7 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, appro
     was_cancelled = False
     yielded = False       # Perry soltó la zona antes de terminar para que entre un carro
     last_cubes = []
+    warned_others = False   # el aviso de cubos sin caja (rojos) se da una vez por corrida
 
     try:
         for cycle in range(1, s["max_cycles"] + 1):
@@ -188,7 +216,11 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, appro
             cubes, img = look(cfg, m, cam, log, f"vista{cycle}")   # TODOS: también son obstáculos
             last_cubes = cubes
             if arbiter:
-                arbiter.set_zone_cubes(sum(reachable(cfg, k) for k in cubes))
+                arbiter.set_zone_cubes(count_waiting(cfg, cubes, to, colors))
+            others = sorted({k.color for k in cubes if not sortable(cfg, k, to, colors)} - set(colors or ()))
+            if others and not warned_others:
+                warned_others = True
+                log(f"[AVISO] Hay cubos sin caja en la zona ({', '.join(others)}): los saca al descarte (primero los que tapan un objetivo).")
             dec = decide(cfg, cubes, ignored, to, colors)
             log.image(f"plan{cycle}", draw_plan(img, cam, cfg, cubes, dec))   # para auditar
             rec = {"cycle": cycle, "event": "decision", "kind": dec.kind, "to": to, "message": dec.message,
@@ -226,7 +258,7 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, appro
                 pushes += 1
                 continue
             c, grasp_dir = dec.cube, dec.grasp_dir
-            container = to or cfg["containers"][c.color]
+            container = dec.box or to or cfg["containers"][c.color]
             log(f"Ciclo {cycle}: cubo {c.color} en ({c.x:.1f}, {c.y:.1f}) girado {c.angle:+.0f}°, "
                 f"cierro a {grasp_dir % 180:.0f}° -> {container}")
             if not run:
@@ -270,14 +302,17 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, appro
                         "engranaje, o se movió la cámara o una caja). Me detengo: correr la Prueba de precisión.")
                     break
                 continue
-            done += 1
             fails_in_a_row = 0
             pushes = 0   # el límite de empujes es por atasco: si se agarró algo, la situación cambió
+            if container == "descarte":
+                log(f"Cubo {c.color} descartado (fuera de la zona). Clasificados: {done}.")
+            else:
+                done += 1
+                if arbiter:
+                    arbiter.increment_sorted()
+                log(f"Cubo {c.color} soltado en {container}. Llevo {done}.")
             if arbiter:
-                arbiter.increment_sorted()
-            log(f"Cubo {c.color} soltado en {container}. Llevo {done}.")
-            if arbiter:
-                left = sum(reachable(cfg, k) for k in after)
+                left = count_waiting(cfg, after, to, colors)
                 arbiter.set_zone_cubes(left)
                 # turnos: un carro espera y en la mesa quedan pocos cubos -> que entre a entregar
                 if left < arbiter.full_cubes and arbiter.cars_waiting():
@@ -302,7 +337,7 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, appro
                 arbiter.set_state(PerryState.STOP, carrying=False, parked_ok=parked)
             elif yielded:
                 arbiter.set_state(PerryState.FREE, carrying=False, parked_ok=parked)
-            elif any(not colors or k.color in colors for k in last_cubes):
+            elif any(sortable(cfg, k, to, colors) for k in last_cubes):
                 # quedan cubos que había que clasificar (fuera de alcance o sin agarre): zona trabada.
                 # Los de otros colores, si el operador eligió uno, quedan por elección: no la traban.
                 arbiter.set_state(PerryState.BLOCKED, carrying=False, parked_ok=parked)

@@ -16,6 +16,10 @@ sys.path.insert(0, str(HERE.parent))
 from vision import zone_blobs_cm2, zone_is_clear  # noqa: E402
 
 CFG = yaml.safe_load((HERE.parent / "config" / "arm.yaml").read_text(encoding="utf-8"))
+# Las fotos de tests/images se sacaron el 31-10 con esta calibración: la de hoy en arm.yaml cambia cada vez
+# que mueven la cámara, y el rectángulo de la zona ya no caería sobre ellas.
+IMAGES_CORNERS_PX = [[239.0, 164.0], [399.0, 156.0], [403.0, 251.0], [244.0, 260.0]]
+CFG["camera"]["corners_px"] = IMAGES_CORNERS_PX
 IMAGES = HERE / "images"
 
 

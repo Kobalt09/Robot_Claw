@@ -128,14 +128,8 @@ class TopCamera:
     """Cámara cenital con la homografía de arm.yaml. Úsala con `with`."""
 
     def __init__(self, cfg):
-        c = cfg["camera"]
-        self.cfg = c
-        self.cube_cm = cfg["grasp"]["cube"]
-        self.H =cv2.getPerspectiveTransform(np.float32(c["corners_px"]), np.float32(c["corners_cm"]))
-        self.det = DetectorColores(area_minima=c["min_area_px"])
-        self.det.rangos_colores.clear()
-        for name, ranges in c["colors"].items():
-            self.det.configurar_color(name, [(np.array(lo, np.uint8), np.array(hi, np.uint8)) for lo, hi in ranges])
+        self._setup_detection(cfg)
+        c = self.cfg
         idx = c.get("index", 1)
         try:
             self.cam = CapturaCamara(indice_camara=idx)
@@ -148,11 +142,21 @@ class TopCamera:
                 raise RuntimeError(f"No se pudo abrir la cámara en el índice {idx} ni en {alt_idx}: {e}")
         time.sleep(c["warmup_s"])
         # punto de la mesa justo debajo de la cámara: el de arm.yaml, o el centro de la imagen
-        if c.get("nadir_cm"):
-            self.nadir = tuple(c["nadir_cm"])
-        else:
+        if self.nadir is None:
             h, w = self.frame().shape[:2]
             self.nadir = self.px_to_cm(w / 2, h / 2)
+
+    def _setup_detection(self, cfg):
+        """Homografía y colores, sin abrir la cámara (así se prueba con fotos guardadas)."""
+        c = cfg["camera"]
+        self.cfg = c
+        self.cube_cm = cfg["grasp"]["cube"]
+        self.H = cv2.getPerspectiveTransform(np.float32(c["corners_px"]), np.float32(c["corners_cm"]))
+        self.det = DetectorColores(area_minima=c["min_area_px"])
+        self.det.rangos_colores.clear()
+        for name, ranges in c["colors"].items():
+            self.det.configurar_color(name, [(np.array(lo, np.uint8), np.array(hi, np.uint8)) for lo, hi in ranges])
+        self.nadir = tuple(c["nadir_cm"]) if c.get("nadir_cm") else None   # None: el centro de la imagen
 
     def __enter__(self):
         return self
@@ -180,6 +184,8 @@ class TopCamera:
         """Cubos dentro de la zona, el más grande primero. Devuelve (cubos, imagen anotada)."""
         f = self.frame() if frame is None else frame
         self.last_frame = f   # imagen limpia, para la interfaz de auditoría
+        if self.nadir is None:          # sin cámara abierta (pruebas con fotos): el centro de la imagen
+            self.nadir = self.px_to_cm(f.shape[1] / 2, f.shape[0] / 2)
         z = self.cfg["zone"]
         cubes = []
         detections = self.det.procesar_frame(f)

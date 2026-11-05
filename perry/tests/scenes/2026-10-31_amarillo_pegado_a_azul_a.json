@@ -1,8 +1,8 @@
 {
  "source": "capturas del panel 31-10",
- "note": "amarillo pegado a una cara de un azul: se agarra por los costados",
- "expect": "grab",
- "expect_color": "amarillo",
+ "note": "amarillo pegado a una cara de un azul: se agarra por los costados (05-11: con la apertura real de 3,6 cm los dos siguen agarrables por los mismos ejes; el orden no importa) | 05-11: con margen lateral de 2 mm (la pinza erra 3-4 mm) primero los separa empujando: tambien correcto",
+ "expect": "push",
+ "expect_color": null,
  "to": null,
  "cubes": [
   {
