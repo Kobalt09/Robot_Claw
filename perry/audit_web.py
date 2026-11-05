@@ -683,6 +683,7 @@ def run_cycle(body):
     S.stop.clear()
     m = None
     try:
+        S.cfg = yaml.safe_load(YAML.read_text(encoding="utf-8"))
         cfg = S.cfg
         log = Log(cfg, sink=S.log.append,
                   image_sink=lambda name, img: name.startswith(("plan", "precision")) and setattr(S, "plan", jpg(img)))

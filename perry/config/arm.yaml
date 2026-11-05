@@ -38,7 +38,7 @@ joints:
 # pinza: 750 abierta. 1700 = cierre firme (27-10: con 1500/1600 el agarre quedaba al límite y a
 # veces el cubo se escurría; con 1700 lo sostiene sin zumbido continuo).
 # push_closed: para EMPUJAR, puntas juntas (~2 mm entre ellas, medido 28-10 sin zumbido)
-gripper: {channel: 10, open: 750, closed: 1700, push_closed: 2350, min: 500, max: 2500}
+gripper: {channel: 10, open: 750, closed: 2000, push_closed: 2350, min: 500, max: 2500}
 
 # Cámara cenital. Si la mueven: py calibrate_camera.py (vuelve a marcar las 4 esquinas).
 camera:
@@ -48,7 +48,7 @@ camera:
   # lejana der., cercana der., cercana izq.; en píxeles y en cm (X hacia la zona, Y a la izquierda).
   # Los cm se midieron el 31-10 con la calibración de la milimetrada (precisión ~3 mm). Si mueven
   # la cámara: solo cambian corners_px (las esquinas del azul en la imagen nueva).
-  corners_px: [[229.0, 160.0], [388.0, 147.0], [394.0, 241.0], [237.0, 254.0]]
+  corners_px: [[245.8, 135.1], [409.4, 126.7], [414.5, 226.2], [250.9, 234.5]]
   corners_cm: [[21.47, 7.90], [21.19, -8.40], [11.48, -8.02], [11.77, 8.13]]
   zone: {x_min: 10.0, x_max: 21.0, y_abs: 9.5}   # solo se buscan cubos aquí (+1 cm de margen)
   height_cm: 70.0          # altura del lente sobre la mesa: corrige la paralaje (la cámara ve la cara
@@ -114,7 +114,7 @@ reach:
     - {r: 13.19, hombro: 1323, codo: 1573, muneca: 2097}   # cubo real en (13,1; 1,5), verificado a ojo (27-10)
     - {r: 13.83, hombro: 1321, codo: 1568, muneca: 2088}   # esquinas cercanas
     - {r: 15.35, hombro: 1302, codo: 1521, muneca: 2006}   # centro del rectángulo
-    - {r: 16.0,  hombro: 1270, codo: 1426, muneca: 2042}   # primer agarre real de un cubo (20-10)
+    - {r: 16.5,  hombro: 1303, codo: 1428, muneca: 2117}   # centro del área calibrado con cubo real (05-11)
     - {r: 18.06, hombro: 1195, codo: 1198, muneca: 2094}   # agarre real en (17,3; -5,2) (20-10)
     - {r: 21.2,  hombro: 1150, codo: 836,  muneca: 2189}   # pinza vertical, punta sobre la mesa (visto en (18,9; 7,3) +1 cm)
     # descartadas: {r: 19.5, hombro: 1200, codo: 1040, muneca: 2130} (se pasaba y empujaba los cubos)
