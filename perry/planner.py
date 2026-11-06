@@ -3,7 +3,7 @@
 Lo usan sort_cubes.py (el ciclo real) y audit.py (la interfaz para auditar), así la interfaz
 muestra exactamente la misma decisión que tomaría el brazo.
 """
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from math import hypot
 
 from grasp import GraspCfg, axis_clearance, blocked_behind, choose_grasp, closing_dirs, plan_push
@@ -71,13 +71,19 @@ def decide(cfg, cubes, ignored=(), to=None, colors=None):
         r_hi = cfg["reach"]["max_r"] - s["push_margin_r"]
         arm_ok = lambda p: reachable(cfg, p) and in_zone(cfg, p)                   # noqa: E731  donde puede bajar la pinza
         cube_ok = lambda p: arm_ok(p) and r_lo <= hypot(p.x, p.y) <= r_hi         # noqa: E731  donde pueden quedar cubos
-        plan = plan_push(cubes, g, candidate, point_ok=arm_ok, cube_ok=cube_ok)
+        # el empuje de siempre (g.push) separa bien los bloques; si no hay ninguno posible (montón en el borde
+        # lejano: 3,8 cm siempre saca algún cubo del alcance), se prueban empujes más cortos (06-11)
+        for length in [g.push] + [L for L in s.get("push_fallback_cm", ()) if L < g.push]:
+            plan = plan_push(cubes, replace(g, push=length), candidate, point_ok=arm_ok, cube_ok=cube_ok,
+                             stay_ok=lambda p: in_zone(cfg, p))
+            if plan is not None:
+                break
         if plan is None:
             return None
         moved = sum(1 for a, b in zip(cubes, plan.predicted) if (a.x, a.y) != (b.x, b.y))
         return Decision("push", plan.cube, plan=plan, unreachable=unreachable,
                         message=f"EMPUJAR el cubo {plan.cube.color} en ({plan.cube.x:.1f}, {plan.cube.y:.1f}) "
-                                f"{direction_words(*plan.direction)}, {g.push:.1f} cm"
+                                f"{direction_words(*plan.direction)}, {plan.length:.1f} cm"
                                 + (f" (arrastra {moved} cubos)" if moved > 1 else ""))
 
     unreachable = [c for c in cubes if not is_ignored(c) and not reachable(cfg, c) and sortable(cfg, c, to, colors)]

@@ -43,6 +43,11 @@ class GraspCfg:
     push_gap: float = 0.0        # luz extra entre la pinza que empuja y el cubo al bajar
     behind_gap: float = 0.0      # luz mínima detrás del cubo (más lejos del brazo): ahí pega el cuerpo de
                                  # la pinza al bajar, más si baja inclinada (05-11). 0 = no se mira
+    radial_min_deg: float = 0.0  # a más de radial_min_r, la dirección de cierre debe quedar al menos a estos
+    radial_min_r: float = 0.0    # grados de la línea brazo-cubo (06-11: en línea, el dedo de afuera caía
+                                 # sobre la cara de arriba). 0 = sin restricción
+    push_far_tol: float = 0.0    # un cubo que YA estaba fuera de lugar puede quedar hasta esto más lejos al
+                                 # empujar (06-11: 2 mm, menos que el ruido de la cámara, trababan la zona)
 
 
 def blocked_behind(c, cubes, g):
@@ -71,6 +76,7 @@ class PushPlan:
     start: tuple         # (x, y) donde baja la pinza cerrada
     end: tuple           # (x, y) hasta donde la desliza
     predicted: list      # posición esperada de todos los cubos después del empuje
+    length: float = 0.0  # cuánto se desliza el cubo (cm)
 
 
 def _rect(cx, cy, ang, half_u, half_v):
@@ -134,9 +140,17 @@ def axis_is_free(c, others, direction, g, extra=0.0):
     return not any(o.color != c.color and _overlap(pinch, _square(o, g), touch) for o in others if o is not c)
 
 
+def radial_ok(c, direction, g):
+    """¿Se puede cerrar en `direction`? Lejos del eje, no en línea con el brazo (ver radial_min_deg)."""
+    if g.radial_min_deg <= 0 or hypot(c.x, c.y) <= g.radial_min_r:
+        return True
+    return 90.0 - abs(relative_giro(c, direction)) >= g.radial_min_deg
+
+
 def axis_clearance(c, others, direction, g, cap=2.0):
-    """Holgura extra (cm) que queda alrededor de los dedos; -1 si el eje no está libre."""
-    if not axis_is_free(c, others, direction, g):
+    """Holgura extra (cm) que queda alrededor de los dedos; -1 si el eje no está libre
+    (o si cerrar en esa dirección queda demasiado en línea con el brazo)."""
+    if not radial_ok(c, direction, g) or not axis_is_free(c, others, direction, g):
         return -1.0
     lo, hi = 0.0, cap
     for _ in range(12):
@@ -189,15 +203,17 @@ def _slide(cubes, first, n, g):
     return [replace(o, x=o.x + n[0] * g.push, y=o.y + n[1] * g.push) if id(o) in moved else o for o in cubes], len(moved)
 
 
-def plan_push(cubes, g, reachable, point_ok=None, cube_ok=None):
+def plan_push(cubes, g, reachable, point_ok=None, cube_ok=None, stay_ok=None):
     """Si nada es agarrable, el empuje más simple que deja algún cubo agarrable (o None).
 
     reachable(cubo): si el cubo es candidato (para empujar y para agarrar después).
     point_ok(cubo):  si una posición está al alcance del brazo (dónde baja el empujador y dónde
                      quedan los cubos empujados). Por defecto, igual que reachable.
+    stay_ok(cubo):   dónde puede quedar, como mínimo, un cubo que ya estaba fuera de cube_ok (en la zona).
     """
     point_ok = point_ok or reachable
     cube_ok = cube_ok or point_ok   # dónde pueden quedar los cubos empujados (más estricto que la pinza)
+    stay_ok = stay_ok or (lambda p: True)
     if choose_grasp(cubes, g, reachable) is not None:
         return None
     best, best_key = None, None
@@ -218,8 +234,9 @@ def plan_push(cubes, g, reachable, point_ok=None, cube_ok=None):
             end = (start[0] + n[0] * travel, start[1] + n[1] * travel)
             predicted, n_moved = _slide(cubes, c, n, g)
             # un cubo empujado debe quedar en lugar válido; si ya estaba fuera (perdido o al borde),
-            # alcanza con que no termine MÁS LEJOS de la base que antes
-            moved_ok = all(cube_ok(p) or (not cube_ok(o) and hypot(p.x, p.y) <= hypot(o.x, o.y))
+            # alcanza con que no termine MÁS LEJOS de la base que antes (± push_far_tol) ni fuera de la zona
+            moved_ok = all(cube_ok(p) or (not cube_ok(o) and stay_ok(p)
+                                          and hypot(p.x, p.y) <= hypot(o.x, o.y) + g.push_far_tol)
                            for p, o in zip(predicted, cubes) if p is not o)
             if not moved_ok or not point_ok(Cube("", *start, a)) or not point_ok(Cube("", *end, a)):
                 continue
@@ -228,7 +245,7 @@ def plan_push(cubes, g, reachable, point_ok=None, cube_ok=None):
             else:
                 key = (1, diag, -_freedom(predicted, g, reachable), hypot(*start))   # mejor esfuerzo
             if best_key is None or key < best_key:
-                best, best_key = PushPlan(c, n, start, end, predicted), key
+                best, best_key = PushPlan(c, n, start, end, predicted, g.push), key
     return best
 
 

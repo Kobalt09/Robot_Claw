@@ -10,6 +10,7 @@ Fase 5:
 - Botones de operador: Habilitar Zona (FREE) y Bloquear Zona (STOP).
 - Integración transparente con ROS 2 si rclpy está disponible (vía ros_node.py).
 """
+import copy
 import json
 import os
 import re
@@ -559,6 +560,27 @@ def jpg(img):
     return cv2.imencode(".jpg", img)[1].tobytes()
 
 
+class CurrentCamera:
+    """La cámara que el panel tiene abierta AHORA. El ciclo la usa a través de esto: si el panel la reabre,
+    el ciclo no se queda con la vieja (06-11: planificaba sobre un cuadro congelado)."""
+
+    def __init__(self, wait_s=5.0):
+        self.wait_s = wait_s
+
+    def __getattr__(self, name):
+        t0 = time.time()
+        while S.cam is None:
+            if time.time() - t0 > self.wait_s:
+                raise RuntimeError("la cámara cenital no está abierta")
+            time.sleep(0.1)
+        return getattr(S.cam, name)
+
+
+def camera_changed(old, new):
+    """¿Hay que reabrir la cámara? Solo si cambió su configuración, no por cada corrida."""
+    return old["camera"] != new["camera"]
+
+
 def fleet_step(now, frame, launch):
     """Después de que un carro devuelve la llave: ASENTANDO y recién después el ciclo (launch()).
 
@@ -602,10 +624,14 @@ def camera_loop():
     """Mantiene la cámara cenital abierta, actualiza streams y ejecuta chequeos automáticos."""
     while True:
         cfg = S.cfg
+        opened = copy.deepcopy(cfg)   # antes de abrir: TopCamera anota en cfg el índice que terminó usando
         try:
             with TopCamera(cfg) as cam:
                 S.cam = cam
-                while S.cfg is cfg or S.running:      # no cambiar la cámara en medio de un ciclo
+                # no cambiar la cámara en medio de un ciclo, ni reabrirla si su configuración no cambió
+                while S.running or not camera_changed(opened, S.cfg):
+                    if cam.cam.t_frame and time.time() - cam.cam.t_frame > 3.0:
+                        raise RuntimeError("la cámara dejó de entregar cuadros; la reabro")
                     cubes, img = cam.find_cubes()
                     live = img if S.running else draw_plan(img, cam, cfg, cubes)
                     with S.lock:
@@ -649,7 +675,9 @@ def camera_loop():
                                     S.log.append(f"[AUTO-DESPEJE Error] {ex}")
 
                     time.sleep(0.25)
+            S.cam = None          # cerrada: el ciclo espera la nueva (CurrentCamera), no lee la vieja
         except Exception as e:
+            S.cam = None
             S.status = f"cámara: {e}"
             time.sleep(2)
 
@@ -691,10 +719,10 @@ def run_cycle(body):
         m = open_arm(cfg)
         if mode == "precision":
             from precision import precision_run
-            precision_run(cfg, m, S.cam, log, stop=S.stop, status=lambda t: setattr(S, "status", t))
+            precision_run(cfg, m, CurrentCamera(), log, stop=S.stop, status=lambda t: setattr(S, "status", t))
             return
         sort_loop(
-            cfg, m, S.cam, log,
+            cfg, m, CurrentCamera(), log,
             run=(mode != "look"),
             to=("amarillo" if mode == "amarillo" else None),
             stop=S.stop,

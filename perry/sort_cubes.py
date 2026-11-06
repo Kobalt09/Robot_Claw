@@ -166,6 +166,18 @@ def drop(cfg, m, container):
     go_up(cfg, m)
 
 
+def scene_changed(cfg, before, after):
+    """¿Cambió la zona? Si aparece o falta un cubo, o alguno se movió más de sort.same_cube_cm.
+
+    Solo cuentan los cubos que el brazo alcanza con margen: uno en el borde lejano aparece y desaparece entre
+    fotos (06-11: un azul a 20 cm hacía rechazar un paso bueno a los 3 s)."""
+    same, r_max = cfg["sort"]["same_cube_cm"], cfg["reach"]["max_r"] - 0.5
+    near = lambda cubes: [c for c in cubes if hypot(c.x, c.y) <= r_max]  # noqa: E731
+    missing = lambda a, b: any(not any(k.color == c.color and hypot(k.x - c.x, k.y - c.y) <= same for k in b)  # noqa: E731
+                               for c in near(a))
+    return missing(before, after) or missing(after, before)
+
+
 def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, approve=None, arbiter=None,
               colors=None):
     """El ciclo completo. stop: threading.Event para cancelar; status(texto): estado actual.
@@ -207,6 +219,16 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, appro
     last_cubes = []
     warned_others = False   # el aviso de cubos sin caja (rojos) se da una vez por corrida
 
+    def approved_same(cubes):
+        """Paso a paso: espera la aprobación y vuelve a mirar. Si mientras tanto la escena cambió, el plan ya
+        no vale (06-11: se aprobó 3,5 min después y bajó a agarrar donde no había nada)."""
+        say(f"ESPERANDO TU APROBACION: {dec.message}"); approve(); check()
+        fresh, _ = cam.find_cubes(cam.still_frame())
+        if scene_changed(cfg, cubes, fresh):
+            log("La escena cambió mientras esperaba la aprobación: no ejecuto ese paso, vuelvo a mirar y planificar.")
+            return False
+        return True
+
     try:
         for cycle in range(1, s["max_cycles"] + 1):
             check()
@@ -246,11 +268,11 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, appro
                 plan = dec.plan
                 dx, dy = plan.direction
                 log(f"Ciclo {cycle}: ningún cubo tiene un eje libre (bloque). Empujo el cubo en "
-                    f"({plan.cube.x:.1f}, {plan.cube.y:.1f}) {gcfg.push:.1f} cm hacia ({dx:+.2f}, {dy:+.2f}).")
+                    f"({plan.cube.x:.1f}, {plan.cube.y:.1f}) {plan.length:.1f} cm hacia ({dx:+.2f}, {dy:+.2f}).")
                 if not run:
                     log("Modo prueba: no se mueve nada."); break
-                if approve:
-                    say(f"ESPERANDO TU APROBACION: {dec.message}"); approve(); check()
+                if approve and not approved_same(cubes):
+                    continue
                 say(f"Ciclo {cycle}: empujando un grupo")
                 if arbiter:
                     arbiter.set_state(PerryState.PICKING, carrying=False)
@@ -263,8 +285,8 @@ def sort_loop(cfg, m, cam, log, run=True, to=None, stop=None, status=None, appro
                 f"cierro a {grasp_dir % 180:.0f}° -> {container}")
             if not run:
                 log("Modo prueba: no se mueve nada."); break
-            if approve:
-                say(f"ESPERANDO TU APROBACION: {dec.message}"); approve(); check()
+            if approve and not approved_same(cubes):
+                continue
             say(f"Ciclo {cycle}: agarrando cubo {c.color} en ({c.x:.1f}, {c.y:.1f})")
             if arbiter:
                 arbiter.set_state(PerryState.PICKING, carrying=False)

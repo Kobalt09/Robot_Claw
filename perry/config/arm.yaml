@@ -22,7 +22,7 @@ joints:
   # Calibrada por tramos con puntos tocados de verdad (20-10); no es lineal (~11 us/° a la derecha,
   # menos a la izquierda). -36.6° = esquina cercana derecha, +36.6° = esquina cercana izquierda.
   # 31-10: puntos -15/0/+15 corregidos con la prueba de precisión (la base se quedaba corta hasta 2,9° a la izquierda)
-  base:   {channel: 0,  cal: [[-36.6, 1915], [-15, 1672], [0, 1491], [15, 1317], [36.6, 1121]], min: 520, max: 2150, backlash_us: 100}
+  base:   {channel: 0,  cal: [[-36.6, 1915], [-15, 1672], [0, 1491], [15, 1317], [36.6, 1121]], min: 520, max: 2150, backlash_us: 100}   # 06-11: la Maestro corta en 496; 496 solo daba ~3 mm más
   # hombro/codo/muneca: la cal es PROVISORIA (fotos, ±3°). Para ir a un punto se usa la tabla `reach`.
   # hombro: bajar pulso = hacia adelante, ~6,5 us/° según las fotos de perfil del 20-10
   hombro: {channel: 2,  cal: [[110, 1500], [56, 1200]], min: 500, max: 2500}
@@ -103,6 +103,11 @@ grasp:
   push_gap: 0.3        # la pinza que empuja baja 0,3 cm más lejos del cubo (no caerle encima)
   behind_gap: 1.0      # 05-11: luz mínima DETRÁS del cubo (más lejos del brazo). Si es menor, primero se separan:
                        # al bajar, el cuerpo de la pinza pegaba en el cubo de atrás (más cerca del borde, inclinada)
+  radial_min_deg: 30   # 06-11: a más de radial_min_r del eje, no cerrar a menos de 30° de la línea brazo-cubo.
+  radial_min_r: 14.0   # En línea fallaba siempre (4 de 4, el dedo de afuera caía sobre la cara de arriba);
+                       # de costado, ninguno. A 12,6 cm en línea sí agarró (05-11)
+  push_far_tol: 0.3    # 06-11: un cubo ya fuera de alcance puede quedar hasta 3 mm más lejos al empujar (siempre en
+                       # la zona). Con 0, 2 mm de diferencia (ruido de cámara) hacían decir «nada que hacer»
   push_dir_step: 30   # empujar también en cualquier dirección (cada 30°), no solo perpendicular a las caras
 push_lift_us: 20       # al empujar, la pinza va este tanto (hombro) más alta que al agarrar
 push_step_cm: 0.5      # el empuje avanza de a estos cm
@@ -111,9 +116,11 @@ push_step_cm: 0.5      # el empuje avanza de a estos cm
 sort:
   same_cube_cm: 1.5        # si tras agarrar hay un cubo a menos de esto del objetivo, el agarre falló
   retries: 1               # reintentos por cubo antes de darlo por perdido
-  max_cycles: 12           # tope de vueltas del ciclo (seguridad)
+  max_cycles: 100          # 06-11: era 12 y cortaba corridas buenas (bloque de 8 cubos: 7 empujes en 12 ciclos).
+                           # Solo frena un bucle sin fin; los atascos los corta max_pushes
   max_fails_in_a_row: 2   # agarres fallados seguidos -> posible desajuste: se detiene y pide la prueba de precisión
   max_pushes: 3            # tope de empujes SEGUIDOS sin lograr agarrar nada (zona bloqueada)
+  push_fallback_cm: [3.0, 2.5, 2.0]   # 06-11: si con grasp.push (3,8) no hay empuje posible, se prueban estos
   push_margin_r: 1.0       # un cubo empujado debe quedar a esto de AMBOS bordes del alcance (mínimo de la tabla y max_r): en cadena se corren mm de más
   log_dir: logs            # fotos y registro de cada corrida (dentro de perry/)
   # Descarte (05-11): los cubos de estos colores no tienen caja. Perry saca primero los que tapan un
@@ -139,7 +146,9 @@ reach:
     - {r: 16.0,  hombro: 1270, codo: 1426, muneca: 2042}   # primer agarre real de un cubo (20-10)
     # 05-11: se volvió a esta fila. La de {r: 16.5, hombro: 1303, codo: 1428, muneca: 2117} dejaba la pinza
     # 7–10 mm corta entre 15,5 y 16,7 cm (prueba de precisión: error de distancia, no de lado).
-    - {r: 18.06, hombro: 1195, codo: 1198, muneca: 2094}   # agarre real en (17,3; -5,2) (20-10)
+    # 06-11: se quitó {r: 18.06, hombro: 1195, codo: 1198, muneca: 2094} (agarre real del 20-10): con el
+    # perfil de DroidCam la pinza quedaba ~1 cm pasada en X y apoyada en la mesa a 18,6 cm.
+    - {r: 18.56, hombro: 1260, codo: 1238, muneca: 2110}   # 06-11: cubo real en (18,56; -0,15), centrado visto de perfil (DroidCam) y desde arriba; agarre en 1230 (offset -30)
     - {r: 21.2,  hombro: 1150, codo: 836,  muneca: 2189}   # pinza vertical, punta sobre la mesa (visto en (18,9; 7,3) +1 cm)
     # descartadas: {r: 19.5, hombro: 1200, codo: 1040, muneca: 2130} (se pasaba y empujaba los cubos)
     #              {r: 21.27, hombro: 1263, codo: 667, muneca: 2331} (pinza inclinada; hacía flotar la punta)
@@ -158,11 +167,15 @@ poses:
   # derecha). Se suelta desde la pose de traslado (brazo alto); solo cambia la base. Antes:
   #   amarillo: {base: 865,  hombro: 1244, codo: 737, muneca: 2496, giro: 2059}  (izquierda)
   #   verde:    {base: 2079, hombro: 1244, codo: 737, muneca: 2496, giro: 952}   (derecha)
-  amarillo: {base: 2150}   # caja derecha: es el tope de la base (verificado con el brazo, sin zumbido)
-  verde:    {base: 979}    # caja izquierda (verificado con el brazo)
+  amarillo: {base: 2150, hombro: 1325, codo: 1100, muneca: 2000, giro: 1447}   # caja derecha (re-enseñada al alejarla); base en su tope
+  # 06-11: se volvió a soltar ABAJO (desde arriba los cubos podían rebotar fuera). Punta ~1-2 cm sobre el borde,
+  # centrada en la caja; enseñada viendo con DroidCam de frente y con Ignacio al lado.
+  verde:    {base: 880, hombro: 1310, codo: 1100, muneca: 2000, giro: 1447}   # caja izquierda (re-enseñada al alejarla ~4,5 cm)
   # descarte de cubos sin caja (rojos), sobre la mesa más allá de la caja verde, con la base en el tope
   # izquierdo. Las posturas salen de sort.discard_rs (05-11: a 16 cm, hombro 1330, verificado a mano).
-  descarte: {base: 520, giro: 1447}
+  # 06-11: giro 2247 (~80°): los dedos abren a lo largo del brazo y no hacia la caja verde. Con 1447 el dedo
+  # de ese lado chocaba con la caja al bajar y al abrir; probado a 16 cm, cerrar y abrir sin tocarla (~3 mm de luz).
+  descarte: {base: 520, giro: 2247}
 
 # Tolerancia y estabilización para verificar posición de reposo (Fase 1: reach.py)
 park_tolerance_us: 30     # margen aceptable (±us) en travel y base para declarar reposo

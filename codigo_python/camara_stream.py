@@ -71,6 +71,8 @@ class CapturaCamara:
         # Variables para manejo de hilo
         self.corriendo = False
         self.frame_actual: Optional[np.ndarray] = None
+        self.t_frame = 0.0        # cuándo llegó frame_actual
+        self.max_edad_s = 1.0     # un cuadro más viejo que esto no se entrega: la cámara se cerró o se colgó
         self.bloqueo = threading.Lock()
         self.hilo: Optional[threading.Thread] = None
 
@@ -92,6 +94,7 @@ class CapturaCamara:
             if ret and frame is not None:
                 with self.bloqueo:
                     self.frame_actual = frame
+                    self.t_frame = time.time()
             else:
                 time.sleep(0.005)
 
@@ -104,7 +107,9 @@ class CapturaCamara:
         """
         if self.usar_hilo:
             with self.bloqueo:
-                if self.frame_actual is not None:
+                # 06-11: un cuadro viejo (cámara cerrada o sin cuadros nuevos) no se entrega como actual
+                fresco = self.corriendo and time.time() - self.t_frame <= self.max_edad_s
+                if self.frame_actual is not None and fresco:
                     return True, self.frame_actual.copy()
                 return False, None
         else:
